@@ -1,0 +1,19 @@
+# 前端开发Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app/frontend
+
+# 复制包管理文件
+COPY frontend/package.json frontend/package-lock.json ./
+
+# 安装依赖（使用npm install以兼容性优先）
+RUN npm install
+
+# 复制源代码
+COPY frontend/ .
+
+# 暴露端口
+EXPOSE 5173
+
+# 开发命令
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

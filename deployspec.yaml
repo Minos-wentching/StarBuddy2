@@ -1,0 +1,17 @@
+# ModelScope创空间部署配置
+version: 1
+app_type: web
+entry_file: backend/main.py
+framework: fastapi
+port: 7860
+environment:
+  ENVIRONMENT: "production"
+  PYTHONPATH: /app
+  PYTHONUNBUFFERED: "1"
+resources:
+  cpu: 2
+  memory: 4096
+  gpu: 0
+build:
+  dockerfile: Dockerfile
+  context: .

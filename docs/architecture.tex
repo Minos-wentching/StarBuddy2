@@ -1,0 +1,414 @@
+\documentclass[12pt,a4paper]{ctexart}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit, calc}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{amsmath}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    urlcolor=blue!70!black,
+}
+
+\definecolor{manager}{HTML}{4A90D9}
+\definecolor{exilescolor}{HTML}{E09040}
+\definecolor{firefighters}{HTML}{D04040}
+\definecolor{counselor}{HTML}{8040C0}
+\definecolor{codebg}{HTML}{F5F5F5}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    breaklines=true,
+    columns=fullflexible,
+}
+
+\title{\textbf{Inner Mirror}\\[0.5em]
+\large 基于内在家庭系统理论的多智能体心理治疗系统\\[0.3em]
+\normalsize Architecture Document}
+\author{Inner Mirror Contributors}
+\date{2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{项目概述}
+
+\textbf{Inner Mirror} 是一个基于内在家庭系统（Internal Family Systems, IFS）理论的多智能体 AI 心理治疗系统。IFS 理论由 Richard Schwartz 提出，认为人的内心由多个``子人格''（parts）组成，包括管理者、流放者和消防员等角色，它们共同构成一个内在家庭。
+
+本系统模拟了四个核心子人格——管理者（Manager/Self）、流放者（Exiles）、消防员（Firefighters）和咨询师（Counselor），通过实时情绪分析驱动人格切换，在多轮对话中帮助用户探索内心冲突、识别核心信念，并通过议会辩论机制整合矛盾的内在声音。系统面向心理健康自我探索场景，适合对 IFS 疗法感兴趣的个人用户。
+
+% ============================================================
+\section{系统架构}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners=4pt, minimum height=1cm, minimum width=2.5cm, align=center, font=\small},
+    service/.style={box, fill=blue!8},
+    persona/.style={box, minimum width=2cm},
+    ext/.style={box, fill=gray!10, dashed},
+    arr/.style={-{Stealth[length=6pt]}, thick},
+    every node/.style={font=\small}
+]
+
+% Frontend
+\node[box, fill=green!10, minimum width=4cm] (fe) {Vue 3 + Vuetify\\前端};
+
+% SSE
+\node[box, fill=yellow!10, right=2.5cm of fe] (sse) {SSE\\实时通信};
+
+% Backend
+\node[service, right=2.5cm of sse, minimum width=3cm] (api) {FastAPI\\REST API};
+
+% Services
+\node[service, below=1.5cm of api] (ds) {DialogueService\\对话服务};
+
+% Personas
+\node[persona, fill=manager!20, below left=1.8cm and 2cm of ds] (org) {管理者\\Manager};
+\node[persona, fill=exilescolor!20, below=1.8cm of ds] (id) {流放者\\Exiles};
+\node[persona, fill=firefighters!20, below right=1.8cm and -0.3cm of ds] (sup) {消防员\\Firefighters};
+\node[persona, fill=counselor!20, right=1.2cm of sup] (coun) {咨询师\\Counselor};
+
+% State Machine
+\node[box, fill=orange!10, left=1.5cm of ds] (sm) {情绪状态机\\PersonaFSM};
+
+% External
+\node[ext, below=1.5cm of id] (llm) {DashScope LLM\\(Qwen-Max)};
+\node[ext, left=1.5cm of llm] (chroma) {ChromaDB\\RAG 记忆};
+\node[ext, right=1.5cm of llm] (img) {DashScope\\图像生成};
+
+% DB
+\node[ext, below=0.8cm of llm] (db) {SQLite\\数据持久化};
+
+% Arrows
+\draw[arr] (fe) -- node[above] {HTTP} (sse);
+\draw[arr] (sse) -- node[above] {Events} (api);
+\draw[arr] (api) -- (ds);
+\draw[arr] (ds) -- (sm);
+\draw[arr] (sm.south) -- ++(0,-0.5) -| (org.north);
+\draw[arr] (ds) -- (id);
+\draw[arr] (ds.south east) -- (sup);
+\draw[arr] (ds.east) -- ++(0.5,0) |- (coun);
+\draw[arr] (org) -- (llm);
+\draw[arr] (id) -- (llm);
+\draw[arr] (sup.south) -- ++(0,-0.3) -| (llm);
+\draw[arr] (coun.south) -- ++(0,-0.5) -| (img);
+\draw[arr] (ds) -- ++(-3,0) |- (chroma);
+\draw[arr] (llm) -- (db);
+
+\end{tikzpicture}
+\caption{Inner Mirror 系统架构图}
+\end{figure}
+
+\subsection{分层设计}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llp{7cm}@{}}
+\toprule
+\textbf{层级} & \textbf{技术} & \textbf{职责} \\
+\midrule
+表现层 & Vue 3 + Vuetify + Pinia & 用户界面、状态管理、SSE 事件消费 \\
+通信层 & SSE (Server-Sent Events) & 实时推送人格切换、议会进展、核心信念更新 \\
+接口层 & FastAPI + Uvicorn & REST API、JWT 认证、路由分发 \\
+业务层 & Python Services & 对话服务、议会服务、咨询师服务、记忆服务 \\
+核心层 & 情绪分析器 + 状态机 & 情绪强度计算、人格切换决策 \\
+数据层 & SQLite + ChromaDB & 结构化存储 + 向量语义检索 \\
+外部服务 & DashScope API & LLM 对话生成、情绪分析、图像生成 \\
+\bottomrule
+\end{tabular}
+\caption{系统分层}
+\end{table}
+
+% ============================================================
+\section{人格状态机}
+
+系统核心是一个基于情绪强度的有限状态机（FSM），管理四个人格之间的切换。
+
+\subsection{四个人格角色}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llp{8cm}@{}}
+\toprule
+\textbf{人格} & \textbf{颜色} & \textbf{职责} \\
+\midrule
+\textcolor{manager}{\textbf{管理者 (Manager/Self)}} & 蓝色 & 温和的引导者，感知用户情绪，负责整体调度。默认活跃人格。 \\
+\textcolor{exilescolor}{\textbf{流放者 (Exiles)}} & 橙色 & 承载受伤、脆弱与未被满足需求的部分。高波动情绪时激活。 \\
+\textcolor{firefighters}{\textbf{消防员 (Firefighters)}} & 红色 & 在强压下快速保护系统、压制痛感的部分。高强度但相对稳定情绪时激活。 \\
+\textcolor{counselor}{\textbf{咨询师 (Counselor)}} & 紫色 & 心理分析师，提取核心信念，生成深层心理洞察。 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{状态转移图}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    state/.style={draw, circle, minimum size=2cm, align=center, font=\small\bfseries},
+    arr/.style={-{Stealth[length=6pt]}, thick},
+    cond/.style={font=\scriptsize, fill=white, inner sep=2pt},
+]
+
+\node[state, fill=manager!20] (org) {管理者\\(Self)};
+\node[state, fill=exilescolor!20, above right=2cm and 3cm of org] (id) {流放者\\(Exiles)};
+\node[state, fill=firefighters!20, below right=2cm and 3cm of org] (sup) {消防员\\(Firefighters)};
+\node[state, fill=counselor!20, right=6cm of org] (coun) {咨询师};
+
+% Manager -> Exiles
+\draw[arr, manager] (org) -- node[cond, above, sloped] {$I > 0.7$ \& 高波动} (id);
+% Manager -> Firefighters
+\draw[arr, firefighters] (org) -- node[cond, below, sloped] {$I > 0.7$ \& 低波动} (sup);
+% Exiles -> Manager
+\draw[arr, gray] (id) -- node[cond, above, sloped] {$I \leq 0.3$} (org);
+% Firefighters -> Manager
+\draw[arr, gray] (sup) -- node[cond, below, sloped] {$I \leq 0.3$} (org);
+% Exiles <-> Firefighters (Council)
+\draw[arr, red!60, dashed, bend left=20] (id) -- node[cond, right] {议会触发} (sup);
+\draw[arr, red!60, dashed, bend left=20] (sup) -- node[cond, left] {冲突检测} (id);
+% Council -> Counselor
+\draw[arr, counselor, dotted] (id) -- node[cond, above, sloped] {议会结束} (coun);
+\draw[arr, counselor, dotted] (sup) -- node[cond, below, sloped] {议会结束} (coun);
+
+\end{tikzpicture}
+\caption{人格状态转移图（$I$ = 情绪强度）}
+\end{figure}
+
+\subsection{转移规则}
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Manager → Exiles}：情绪强度 $I > 0.7$ 且近期情绪波动幅度 $\Delta > 0.2$（原始情绪爆发）
+    \item \textbf{Manager → Firefighters}：情绪强度 $I > 0.7$ 且波动幅度 $\Delta < 0.1$（持续保护压力）
+    \item \textbf{Exiles/Firefighters → Manager}：情绪强度衰减至 $I \leq 0.3$（平静阈值）
+    \item \textbf{进入子人格时}：自动触发议会辩论（\texttt{trigger\_council = True}）
+    \item \textbf{情绪衰减}：子人格活跃时，每轮对话按衰减率 $\gamma = 0.05$ 递减强度
+\end{enumerate}
+
+衰减公式：
+\[
+I_{\text{effective}} = I_{\text{raw}} \times \max(0, 1 - t \times \gamma)
+\]
+其中 $t$ 为切换后的回合数，$\gamma$ 为衰减率。
+
+% ============================================================
+\section{议会辩论机制}
+
+当流放者与消防员之间存在冲突时，系统启动``内心议会''——一个结构化的多轮辩论过程。
+
+\subsection{辩论流程}
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{触发}：人格状态机检测到情绪强度超过阈值，从管理者切换到子人格时自动触发
+    \item \textbf{多轮辩论}：流放者和消防员交替发言，每轮由 LLM 基于各自人格提示词生成观点
+    \item \textbf{结论生成}：辩论结束后，由咨询师角色生成整合性结论
+    \item \textbf{核心信念提取}：从议会结论中调用 \texttt{CounselorService.analyze\_trauma()} 提取核心信念
+    \item \textbf{事件推送}：通过 SSE 发送 \texttt{council\_complete} 和 \texttt{counselor\_report} 事件
+\end{enumerate}
+
+\subsection{辩论结构}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}lp{10cm}@{}}
+\toprule
+\textbf{阶段} & \textbf{说明} \\
+\midrule
+议题设定 & 基于用户输入的情绪冲突自动生成辩论主题 \\
+流放者发言 & 从情感、需求与受伤经验的角度表达立场 \\
+消防员反驳 & 从即时保护与风险规避的角度提出质疑 \\
+多轮交锋 & 重复 2--3 轮，逐步深化论点 \\
+咨询师总结 & 整合双方观点，提出建设性的心理洞察 \\
+信念提取 & 从结论中识别深层核心信念 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{RAG 记忆管线}
+
+系统使用 ChromaDB 实现基于 RAG（Retrieval-Augmented Generation）的长期记忆系统。
+
+\subsection{存储架构}
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{向量数据库}：ChromaDB，使用 Sentence Transformers 生成嵌入向量
+    \item \textbf{元数据}：每条记忆包含 \texttt{user\_id}、\texttt{session\_id}、\texttt{memory\_type}、时间戳
+    \item \textbf{用户隔离}：所有检索操作通过 \texttt{user\_id} 过滤，确保用户数据隔离
+\end{itemize}
+
+\subsection{混合检索}
+
+系统实现语义搜索与关键词搜索的混合检索策略：
+
+\begin{enumerate}[leftmargin=2em]
+    \item 将用户输入转换为嵌入向量
+    \item 在 ChromaDB 中执行语义相似度搜索
+    \item 应用 \texttt{user\_id} 过滤条件
+    \item 返回 Top-K 相关记忆作为 LLM 上下文
+\end{enumerate}
+
+% ============================================================
+\section{情绪分析引擎}
+
+\subsection{双模式架构}
+
+情绪分析器支持两种模式：
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llp{7cm}@{}}
+\toprule
+\textbf{模式} & \textbf{条件} & \textbf{实现} \\
+\midrule
+API 模式 & 配置了 DashScope API Key & 调用 Qwen-Plus 模型进行情绪强度评估 \\
+关键词模式 & 无 API Key 或 API 失败 & 基于中文情感词典和强度修饰词的规则匹配 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{关键词分析}
+
+关键词模式维护五类情感词库：
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{happy}（开心、快乐、幸福...） → 基准强度 0.7
+    \item \textbf{sad}（悲伤、难过、痛苦...） → 基准强度 0.6
+    \item \textbf{angry/anxious}（愤怒、焦虑...） → 基准强度 0.8
+    \item \textbf{calm}（平静、安宁...） → 基准强度 0.3
+\end{itemize}
+
+强度修饰词（``非常''、``极其''等）会乘以 1.5 倍放大系数；弱化词（``稍微''、``略微''等）乘以 0.5 倍。
+
+% ============================================================
+\section{疗愈日记与 AI 绘图}
+
+\subsection{日记生成流程}
+
+当人格切换至流放者或消防员时，系统在后台异步生成疗愈日记：
+
+\begin{enumerate}[leftmargin=2em]
+    \item 构建 per-agent 日记提示词（移植自 Multiego 的 \texttt{write\_to\_diary} 方法）
+    \item 调用 DashScope LLM 生成诗意/治疗性的日记文本
+    \item 调用 DashScope Wanx 模型生成意象图像
+    \item 持久化到 \texttt{HealingImage} 数据表
+    \item 存储到 ChromaDB 向量库用于后续检索
+    \item 通过 SSE 推送 \texttt{healing\_image} 事件到前端
+\end{enumerate}
+
+\subsection{前端展示}
+
+疗愈相册（\texttt{HealingAlbum.vue}）以画廊形式展示日记卡片，每张卡片包含：
+\begin{itemize}[leftmargin=2em]
+    \item AI 生成的意象图像
+    \item 日记文本
+    \item 对应的人格标识和时间戳
+    \item 用户反馈入口
+\end{itemize}
+
+% ============================================================
+\section{自动修复系统 (AutoHeal)}
+
+AutoHeal 是项目的核心差异化功能之一，实现了容器化环境下的自动错误检测与修复。
+
+\subsection{错误监控}
+
+通过 Docker SDK 实时监听 backend 容器日志流，使用正则表达式匹配 21 种预定义错误模式：
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{错误类型} & \textbf{正则模式} & \textbf{严重程度} \\
+\midrule
+TRACEBACK & \texttt{Traceback.*} & HIGH \\
+SYNTAX\_ERROR & \texttt{SyntaxError.*} & HIGH \\
+IMPORT\_ERROR & \texttt{ImportError.*} & HIGH \\
+MODULE\_NOT\_FOUND & \texttt{ModuleNotFoundError.*} & HIGH \\
+TYPE\_ERROR & \texttt{TypeError.*} & MEDIUM \\
+ATTRIBUTE\_ERROR & \texttt{AttributeError.*} & MEDIUM \\
+NAME\_ERROR & \texttt{NameError.*} & MEDIUM \\
+... & \emph{共 21 种} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{三级修复链}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    box/.style={draw, rounded corners=4pt, minimum height=1.2cm, minimum width=4.5cm, align=center, font=\small},
+    arr/.style={-{Stealth[length=6pt]}, thick},
+    fail/.style={font=\scriptsize\color{red}, midway, right},
+]
+
+\node[box, fill=green!10] (l1) {第一层：内置策略\\(ImportError/SyntaxError/FileNotFound)};
+\node[box, fill=yellow!10, below=1.2cm of l1] (l2) {第二层：Gemini CLI\\(AI 分析修复)};
+\node[box, fill=red!10, below=1.2cm of l2] (l3) {第三层：Claude Code CLI\\(终极兜底)};
+
+\draw[arr] (l1) -- node[fail] {失败} (l2);
+\draw[arr] (l2) -- node[fail] {失败} (l3);
+
+\end{tikzpicture}
+\caption{三级修复链路}
+\end{figure}
+
+\subsubsection{内置策略（第一层）}
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{ImportError}：提取缺失模块名，自动 \texttt{pip install}
+    \item \textbf{SyntaxError}：提取文件路径和行号，自动修复缺少冒号/括号/引号
+    \item \textbf{FileNotFoundError}：自动创建缺失目录和模板文件
+\end{itemize}
+
+\subsubsection{AI 修复（第二/三层）}
+将错误上下文封装为修复 prompt，交由 Gemini CLI 或 Claude Code CLI 执行代码修复。
+
+\subsection{安全机制}
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{冷却}：同类错误 60 秒内不重复处理
+    \item \textbf{限流}：每小时最多处理 10 个错误
+    \item \textbf{边界}：只允许修改 \texttt{backend/}、\texttt{frontend/} 目录
+    \item \textbf{备份}：修复前自动备份原文件
+\end{itemize}
+
+% ============================================================
+\section{技术栈}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}llp{6cm}@{}}
+\toprule
+\textbf{层级} & \textbf{技术} & \textbf{说明} \\
+\midrule
+前端框架 & Vue 3 + Vite & 响应式 UI，Composition API \\
+UI 组件 & Vuetify 3 & Material Design 组件库 \\
+状态管理 & Pinia & 轻量级状态管理 \\
+后端框架 & FastAPI + Uvicorn & 异步 Python Web 框架 \\
+ORM & SQLAlchemy (async) & 异步数据库访问 \\
+数据库 & SQLite & 轻量级关系型数据库 \\
+向量数据库 & ChromaDB & 语义检索和 RAG \\
+嵌入模型 & Sentence Transformers & 文本向量化 \\
+LLM & DashScope (Qwen-Max/Plus) & 阿里云大模型服务 \\
+图像生成 & DashScope (Wanx) & AI 绘图 \\
+实时通信 & Server-Sent Events & 单向服务端推送 \\
+认证 & JWT (HS256) & 无状态令牌认证 \\
+容器化 & Docker Compose & 开发环境编排 \\
+反向代理 & Nginx & 生产环境路由 \\
+自动修复 & autoheal (Python) & Docker 日志监控 + AI 修复 \\
+\bottomrule
+\end{tabular}
+\caption{完整技术栈}
+\end{table}
+
+\end{document}

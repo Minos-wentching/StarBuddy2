@@ -1,0 +1,214 @@
+/**
+ * 设计系统 CSS 自定义属性
+ *
+ * 此文件定义所有设计令牌（design tokens）作为 CSS 自定义属性。
+ * 这些变量可在整个应用程序中使用，确保视觉一致性。
+ *
+ * 注意：此文件由设计系统工具自动生成，请勿手动修改。
+ * 如需修改设计令牌，请更新 colors.js、typography.js 和 spacing.js。
+ */
+
+:root {
+  /* ============ 颜色系统 ============ */
+
+  /* 人格颜色 */
+  --persona-manager: #5B9BD5;
+  --persona-manager-rgb: 91, 155, 213;
+  --persona-manager-oklch: oklch(72% 0.10 240);
+  --persona-manager-light: oklch(85% 0.07 240);
+  --persona-manager-dark: oklch(55% 0.12 240);
+
+  --persona-exiles: #F4B183;
+  --persona-exiles-rgb: 244, 177, 131;
+  --persona-exiles-oklch: oklch(80% 0.12 55);
+  --persona-exiles-light: oklch(90% 0.08 55);
+  --persona-exiles-dark: oklch(65% 0.15 45);
+
+  --persona-firefighters: #A9D18E;
+  --persona-firefighters-rgb: 169, 209, 142;
+  --persona-firefighters-oklch: oklch(82% 0.10 140);
+  --persona-firefighters-light: oklch(90% 0.07 140);
+  --persona-firefighters-dark: oklch(65% 0.12 135);
+
+  --persona-counselor: #B4A7D6;
+  --persona-counselor-rgb: 180, 167, 214;
+  --persona-counselor-oklch: oklch(75% 0.08 290);
+  --persona-counselor-light: oklch(85% 0.06 290);
+  --persona-counselor-dark: oklch(58% 0.10 280);
+
+  --persona-calm: #95B8D1;
+  --persona-calm-rgb: 149, 184, 209;
+  --persona-calm-oklch: oklch(76% 0.05 230);
+  --persona-calm-light: oklch(86% 0.03 230);
+  --persona-calm-dark: oklch(58% 0.06 230);
+
+  /* 情绪强度颜色 */
+  --emotion-low: #4CAF50;
+  --emotion-medium: #FF9800;
+  --emotion-high: #F44336;
+
+  /* 语义颜色 */
+  --color-primary: var(--persona-manager);
+  --color-primary-light: var(--persona-manager-light);
+  --color-primary-dark: var(--persona-manager-dark);
+
+  --color-secondary: var(--persona-counselor);
+  --color-secondary-light: var(--persona-counselor-light);
+  --color-secondary-dark: var(--persona-counselor-dark);
+
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  /* 中性颜色 */
+  --color-background: #ffffff;
+  --color-surface: #f8fafc;
+  --color-surface-variant: #e2e8f0;
+  --color-border: #cbd5e1;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-disabled: #94a3b8;
+
+  /* ============ 排版系统 ============ */
+
+  /* 字体栈 */
+  --font-chinese: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-english: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-monospace: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
+  --font-serif: Georgia, 'Times New Roman', serif;
+
+  /* 字体大小 */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+
+  /* 字重 */
+  --font-weight-thin: 100;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 900;
+
+  /* 行高 */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* 字母间距 */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* ============ 间距系统 ============ */
+
+  /* 基础间距单位 (8px) */
+  --spacing-unit: 0.5rem;
+
+  /* 间距比例尺 */
+  --spacing-0: 0;
+  --spacing-0-5: calc(var(--spacing-unit) * 0.5);
+  --spacing-1: var(--spacing-unit);
+  --spacing-1-5: calc(var(--spacing-unit) * 1.5);
+  --spacing-2: calc(var(--spacing-unit) * 2);
+  --spacing-2-5: calc(var(--spacing-unit) * 2.5);
+  --spacing-3: calc(var(--spacing-unit) * 3);
+  --spacing-3-5: calc(var(--spacing-unit) * 3.5);
+  --spacing-4: calc(var(--spacing-unit) * 4);
+  --spacing-5: calc(var(--spacing-unit) * 5);
+  --spacing-6: calc(var(--spacing-unit) * 6);
+  --spacing-7: calc(var(--spacing-unit) * 7);
+  --spacing-8: calc(var(--spacing-unit) * 8);
+  --spacing-9: calc(var(--spacing-unit) * 9);
+  --spacing-10: calc(var(--spacing-unit) * 10);
+  --spacing-12: calc(var(--spacing-unit) * 12);
+  --spacing-14: calc(var(--spacing-unit) * 14);
+  --spacing-16: calc(var(--spacing-unit) * 16);
+  --spacing-20: calc(var(--spacing-unit) * 20);
+  --spacing-24: calc(var(--spacing-unit) * 24);
+  --spacing-32: calc(var(--spacing-unit) * 32);
+  --spacing-40: calc(var(--spacing-unit) * 40);
+  --spacing-48: calc(var(--spacing-unit) * 48);
+  --spacing-56: calc(var(--spacing-unit) * 56);
+  --spacing-64: calc(var(--spacing-unit) * 64);
+
+  /* 常用间距用途 */
+  --padding-small: var(--spacing-2);
+  --padding-medium: var(--spacing-3);
+  --padding-large: var(--spacing-4);
+  --padding-xlarge: var(--spacing-6);
+
+  --margin-small: var(--spacing-2);
+  --margin-medium: var(--spacing-3);
+  --margin-large: var(--spacing-4);
+  --margin-xlarge: var(--spacing-6);
+
+  --gap-small: var(--spacing-1);
+  --gap-medium: var(--spacing-2);
+  --gap-large: var(--spacing-3);
+  --gap-xlarge: var(--spacing-4);
+
+  --section-spacing: var(--spacing-8);
+  --container-padding: var(--spacing-4);
+  --card-padding: var(--spacing-3);
+  --button-padding: var(--spacing-2);
+  --input-padding: var(--spacing-2);
+
+  /* 边框和圆角 */
+  --border-width: 1px;
+  --border-radius-small: var(--spacing-0-5);
+  --border-radius-medium: var(--spacing-1);
+  --border-radius-large: var(--spacing-1-5);
+  --border-radius-xlarge: var(--spacing-2);
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* 玻璃态效果 */
+  --glass-background: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --glass-backdrop-blur: blur(10px);
+}
+
+/* 深色主题变量 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0f172a;
+    --color-surface: #1e293b;
+    --color-surface-variant: #334155;
+    --color-border: #475569;
+    --color-text: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-text-disabled: #64748b;
+  }
+}
+
+/* 高对比度模式支持 */
+@media (prefers-contrast: high) {
+  :root {
+    --color-border: #1e293b;
+    --color-text: #000000;
+    --color-text-secondary: #334155;
+  }
+}

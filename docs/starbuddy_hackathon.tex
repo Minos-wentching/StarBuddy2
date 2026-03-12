@@ -1,0 +1,296 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[UTF8]{ctex}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}
+
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+
+% 定义颜色
+\definecolor{primaryblue}{RGB}{41, 98, 255}
+\definecolor{accentpurple}{RGB}{126, 87, 194}
+\definecolor{warmorange}{RGB}{255, 152, 0}
+\definecolor{calmblue}{RGB}{66, 165, 245}
+
+% 页眉页脚
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{星伴 (StarBuddy)}
+\fancyhead[R]{Hackathon参赛项目}
+\fancyfoot[C]{\thepage}
+
+% 标题格式
+\titleformat{\section}{\Large\bfseries\color{primaryblue}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{accentpurple}}{\thesubsection}{1em}{}
+
+\setlength{\headheight}{14.5pt}
+\setlength{\parindent}{2em}
+\onehalfspacing
+
+\title{\textbf{\Huge 星伴 (StarBuddy)}\\[0.5em]
+\Large 多智能体辅助心理对话系统}
+\author{参赛团队}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\textit{``每个人心中都住着不同的自己，\\让它们和谐共处，是我们送给孤独症朋友的礼物。''}
+\end{center}
+
+\vspace{1em}
+
+% =====================================================
+\section{项目概述}
+% =====================================================
+
+\textbf{星伴}是一款专为\textbf{孤独症谱系人群}设计的智能心理陪伴系统。我们将国际权威的\textbf{内在家庭系统理论（IFS）}与\textbf{多智能体AI技术}深度融合，创造了一个能够理解、陪伴、引导用户的数字伙伴。
+
+\subsection{我们解决什么问题？}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{社交困境}：孤独症人群往往难以理解社交线索，在人际交往中感到困惑和焦虑
+    \item \textbf{情绪识别困难}：难以识别和表达自己的情绪，常被误解为"冷漠"或"不关心"
+    \item \textbf{专业资源稀缺}：心理咨询师数量有限，且大多缺乏孤独症干预经验
+    \item \textbf{长期陪伴缺失}：现有产品多是简单的问答工具，无法建立深度的信任关系
+\end{itemize}
+
+\subsection{我们的解决方案}
+
+星伴创造性地将用户的"内心世界"具象化为多个AI角色，通过模拟内心对话的方式，帮助用户：
+\begin{itemize}[leftmargin=*]
+    \item \textbf{理解自己}：认识内心不同"声音"的来源和功能
+    \item \textbf{表达情绪}：用安全的方式探索和表达复杂情感
+    \item \textbf{建立连接}：与相似经历的伙伴建立社交联系
+    \item \textbf{持续成长}：追踪情绪轨迹，见证自己的进步
+\end{itemize}
+
+% =====================================================
+\section{核心创新}
+% =====================================================
+
+\subsection{四大AI智能体协作系统}
+
+星伴的核心是四个各司其职的AI角色，它们像真实的内心伙伴一样协作：
+
+\begin{table}[H]
+\centering
+\begin{tabular}{>{\bfseries}l p{8cm}}
+\toprule
+\textbf{角色} & \textbf{职责与特点} \\
+\midrule
+\textcolor{accentpurple}{安全岛} & 用户的主对话伙伴，提供稳定、可预测的交流环境，像一个永远在线的知心朋友 \\
+\addlinespace
+\textcolor{warmorange}{感知精灵} & 代表敏感的自我，当用户感到情绪波动、感官过载时被激活，帮助理解和表达原始情绪 \\
+\addlinespace
+\textcolor{calmblue}{规则守卫} & 秩序的守护者，面对变化和不确定性时激活，帮助用户建立安全感和掌控感 \\
+\addlinespace
+\textcolor{primaryblue}{星星向导} & 后台分析师，记录行为模式，帮助用户建立自我认知，像一位温和的咨询师 \\
+\bottomrule
+\end{tabular}
+\caption{四大AI智能体角色}
+\end{table}
+
+\subsection{情绪驱动的人格切换}
+
+系统会实时分析用户的情绪状态，自动调度合适的AI角色：
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=1.5cm,
+    box/.style={rectangle, rounded corners, draw=primaryblue, fill=primaryblue!10,
+                minimum width=2.5cm, minimum height=0.8cm, align=center, font=\small},
+    decision/.style={diamond, draw=accentpurple, fill=accentpurple!10,
+                     minimum width=1.5cm, minimum height=1cm, align=center, font=\small},
+    arrow/.style={-{Stealth[length=2mm]}, thick}
+]
+    \node[box] (input) {用户输入};
+    \node[box, right=of input] (analyze) {情绪分析};
+    \node[decision, right=of analyze] (check) {强度$>$阈值?};
+    \node[box, above right=0.5cm and 1.5cm of check] (exiles) {感知精灵};
+    \node[box, below right=0.5cm and 1.5cm of check] (firefighters) {规则守卫};
+    \node[box, right=3cm of check] (manager) {安全岛};
+
+    \draw[arrow] (input) -- (analyze);
+    \draw[arrow] (analyze) -- (check);
+    \draw[arrow] (check) -- node[above, font=\tiny]{高波动} (exiles);
+    \draw[arrow] (check) -- node[below, font=\tiny]{低波动} (firefighters);
+    \draw[arrow] (check) -- node[above, font=\tiny]{平静} (manager);
+\end{tikzpicture}
+\end{center}
+
+\subsection{个性化长期记忆}
+
+星伴会记住用户的一切：
+\begin{itemize}[leftmargin=*]
+    \item \textbf{对话记忆}：记住每次交流的内容和情感
+    \item \textbf{行为模式}：识别用户的习惯和偏好
+    \item \textbf{成长轨迹}：记录情绪变化和进步历程
+\end{itemize}
+
+这些记忆让星伴能够提供越来越个性化的陪伴，像一个真正了解你的老朋友。
+
+% =====================================================
+\section{产品功能}
+% =====================================================
+
+\subsection{核心功能模块}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{>{\bfseries}l p{7.5cm}}
+\toprule
+\textbf{功能} & \textbf{说明} \\
+\midrule
+智能对话 & 与安全岛进行自然对话，获得情感支持和引导 \\
+星球会议 & 当内心冲突时，感知精灵与规则守卫展开"议会辩论"，帮助用户理解不同声音 \\
+内心星图 & 可视化展示用户的核心行为模式，像星座图一样呈现内心世界 \\
+感知画册 & AI生成的意象图片日记，用艺术表达内心感受 \\
+星际连线 & "漂流瓶"社交功能，与有相似经历的伙伴建立连接 \\
+成长报告 & 可视化的情绪轨迹与成长分析，见证自己的进步 \\
+\bottomrule
+\end{tabular}
+\caption{产品功能概览}
+\end{table}
+
+\subsection{首次体验：个性化建模}
+
+用户首次登录时，系统会通过两道简答题了解用户的基本情况，并据此：
+\begin{itemize}[leftmargin=*]
+    \item 生成个性化的AI角色对话风格
+    \item 建立用户核心画像
+    \item 预设可能的情绪触发点
+\end{itemize}
+
+这确保了每位用户都能获得量身定制的陪伴体验。
+
+% =====================================================
+\section{技术亮点}
+% =====================================================
+
+\subsection{技术架构}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=0.8cm,
+    layer/.style={rectangle, rounded corners, draw=primaryblue, fill=#1,
+                  minimum width=12cm, minimum height=1cm, align=center},
+    arrow/.style={-{Stealth[length=2mm]}, thick, gray}
+]
+    \node[layer=primaryblue!20] (user) {\textbf{用户界面层}：Vue 3 + Vuetify 3 + WebGL动态背景};
+    \node[layer=accentpurple!20, below=of user] (api) {\textbf{服务网关层}：Nginx反向代理 + JWT认证};
+    \node[layer=warmorange!20, below=of api] (backend) {\textbf{业务逻辑层}：FastAPI + 多智能体调度 + 情绪分析引擎};
+    \node[layer=calmblue!20, below=of backend] (data) {\textbf{数据存储层}：SQLite + ChromaDB向量记忆};
+    \node[layer=gray!20, below=of data] (llm) {\textbf{AI能力层}：阿里云DashScope大模型};
+
+    \draw[arrow] (user) -- (api);
+    \draw[arrow] (api) -- (backend);
+    \draw[arrow] (backend) -- (data);
+    \draw[arrow] (backend.east) -- ++(0.5,0) |- (llm.east);
+\end{tikzpicture}
+\end{center}
+
+\subsection{关键技术}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{多智能体协作}：四大AI角色各司其职，通过精心设计的调度算法协同工作
+    \item \textbf{向量记忆检索}：使用ChromaDB实现语义级别的长期记忆，让AI真正"记住"用户
+    \item \textbf{实时情绪分析}：基于大语言模型的多维度情绪识别，支持人格自动切换
+    \item \textbf{WebGL沉浸体验}：自研GLSL着色器，根据当前活跃人格呈现不同的视觉氛围
+\end{enumerate}
+
+% =====================================================
+\section{社会价值}
+% =====================================================
+
+\subsection{填补市场空白}
+
+当前心理健康市场存在明显缺口：
+\begin{itemize}[leftmargin=*]
+    \item 通用心理咨询服务\textbf{缺乏孤独症专业化支持}
+    \item 孤独症干预服务\textbf{价格高昂、资源稀缺}
+    \item 现有AI心理产品\textbf{缺乏长期陪伴能力}
+\end{itemize}
+
+星伴恰好填补了这一空白，提供\textbf{专业、可及、长期}的心理陪伴服务。
+
+\subsection{降低心理探索门槛}
+
+传统的心理治疗存在诸多门槛：
+\begin{itemize}[leftmargin=*]
+    \item 预约等待时间长
+    \item 专业资源有限
+    \item 面对面交流的压力
+\end{itemize}
+
+星伴提供：
+\begin{itemize}[leftmargin=*]
+    \item 7×24小时随时可用
+    \item 在家即可获得的舒适体验
+    \item 低压力的自我探索环境
+\end{itemize}
+
+\subsection{数据积累的价值}
+
+随着用户使用，系统积累的数据可以：
+\begin{itemize}[leftmargin=*]
+    \item 帮助研究人员更好地理解孤独症人群的心理特征
+    \item 为心理健康政策的制定提供数据支撑
+    \item 推动个性化干预方案的科学研究
+\end{itemize}
+
+% =====================================================
+\section{团队优势}
+% =====================================================
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{技术能力}：完整的全栈开发能力，从AI模型到用户体验
+    \item \textbf{产品思维}：深入理解用户需求，注重体验细节
+    \item \textbf{快速迭代}：Hackathon期间完成了从想法到可演示产品的全过程
+    \item \textbf{社会责任感}：关注弱势群体，用技术创造社会价值
+\end{itemize}
+
+% =====================================================
+\section{未来规划}
+% =====================================================
+
+\begin{itemize}[leftmargin=*]
+    \item 完善核心功能，优化用户体验
+    \item 开展用户测试，收集反馈
+    \item 建立数据安全和隐私保护机制
+    \item 上线公开版本，积累用户群体
+    \item 与康复机构建立合作
+    \item 成为孤独症心理支持领域的专业平台
+\end{itemize}
+
+% =====================================================
+\section{总结}
+% =====================================================
+
+星伴是一个\textbf{有温度的AI产品}。它不仅是一项技术创新，更是一份对孤独症人群的关怀。
+
+我们相信，每个人都值得被理解，每种内心声音都值得被倾听。星伴，让孤独的心灵找到归属。
+
+\vspace{2em}
+
+\begin{center}
+\Large\textbf{感谢评审！}
+
+\vspace{1em}
+\normalsize
+如有任何问题，欢迎随时交流。
+\end{center}
+
+\end{document}

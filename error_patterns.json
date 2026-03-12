@@ -1,0 +1,154 @@
+{
+  "error_patterns": [
+    {
+      "pattern": "Traceback.*",
+      "type": "TRACEBACK",
+      "severity": "HIGH",
+      "description": "Python异常堆栈跟踪"
+    },
+    {
+      "pattern": "ERROR.*",
+      "type": "ERROR_LOG",
+      "severity": "MEDIUM",
+      "description": "错误级别日志"
+    },
+    {
+      "pattern": "Exception.*",
+      "type": "EXCEPTION",
+      "severity": "HIGH",
+      "description": "异常信息"
+    },
+    {
+      "pattern": "SyntaxError.*",
+      "type": "SYNTAX_ERROR",
+      "severity": "HIGH",
+      "description": "语法错误",
+      "repairable": true
+    },
+    {
+      "pattern": "ImportError.*",
+      "type": "IMPORT_ERROR",
+      "severity": "HIGH",
+      "description": "导入错误",
+      "repairable": true
+    },
+    {
+      "pattern": "ModuleNotFoundError.*",
+      "type": "MODULE_NOT_FOUND",
+      "severity": "HIGH",
+      "description": "模块未找到",
+      "repairable": true
+    },
+    {
+      "pattern": "NameError.*",
+      "type": "NAME_ERROR",
+      "severity": "MEDIUM",
+      "description": "名称错误",
+      "repairable": true
+    },
+    {
+      "pattern": "TypeError.*",
+      "type": "TYPE_ERROR",
+      "severity": "MEDIUM",
+      "description": "类型错误"
+    },
+    {
+      "pattern": "ValueError.*",
+      "type": "VALUE_ERROR",
+      "severity": "MEDIUM",
+      "description": "值错误"
+    },
+    {
+      "pattern": "AttributeError.*",
+      "type": "ATTRIBUTE_ERROR",
+      "severity": "MEDIUM",
+      "description": "属性错误"
+    },
+    {
+      "pattern": "KeyError.*",
+      "type": "KEY_ERROR",
+      "severity": "MEDIUM",
+      "description": "键错误"
+    },
+    {
+      "pattern": "IndexError.*",
+      "type": "INDEX_ERROR",
+      "severity": "MEDIUM",
+      "description": "索引错误"
+    },
+    {
+      "pattern": "FileNotFoundError.*",
+      "type": "FILE_NOT_FOUND",
+      "severity": "MEDIUM",
+      "description": "文件未找到",
+      "repairable": true
+    },
+    {
+      "pattern": "PermissionError.*",
+      "type": "PERMISSION_ERROR",
+      "severity": "HIGH",
+      "description": "权限错误"
+    },
+    {
+      "pattern": "ConnectionError.*",
+      "type": "CONNECTION_ERROR",
+      "severity": "HIGH",
+      "description": "连接错误"
+    },
+    {
+      "pattern": "TimeoutError.*",
+      "type": "TIMEOUT_ERROR",
+      "severity": "MEDIUM",
+      "description": "超时错误"
+    },
+    {
+      "pattern": "AssertionError.*",
+      "type": "ASSERTION_ERROR",
+      "severity": "MEDIUM",
+      "description": "断言错误"
+    },
+    {
+      "pattern": "RuntimeError.*",
+      "type": "RUNTIME_ERROR",
+      "severity": "HIGH",
+      "description": "运行时错误"
+    },
+    {
+      "pattern": "MemoryError.*",
+      "type": "MEMORY_ERROR",
+      "severity": "CRITICAL",
+      "description": "内存错误"
+    },
+    {
+      "pattern": "RecursionError.*",
+      "type": "RECURSION_ERROR",
+      "severity": "HIGH",
+      "description": "递归错误"
+    }
+  ],
+  "repair_priority": [
+    "SYNTAX_ERROR",
+    "IMPORT_ERROR",
+    "MODULE_NOT_FOUND",
+    "FILE_NOT_FOUND",
+    "NAME_ERROR",
+    "ATTRIBUTE_ERROR",
+    "TYPE_ERROR",
+    "VALUE_ERROR",
+    "KEY_ERROR",
+    "INDEX_ERROR",
+    "PERMISSION_ERROR",
+    "CONNECTION_ERROR",
+    "TIMEOUT_ERROR",
+    "ERROR_LOG",
+    "EXCEPTION",
+    "TRACEBACK"
+  ],
+  "config": {
+    "max_repair_attempts": 3,
+    "repair_cooldown_seconds": 10,
+    "validation_timeout_seconds": 30,
+    "health_check_url": "http://localhost:8000/health",
+    "monitor_interval_ms": 1000
+  }
+}

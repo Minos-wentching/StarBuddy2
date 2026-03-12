@@ -1,0 +1,54 @@
+# Python依赖包
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.11.5
+email-validator==2.3.0
+python-multipart==0.0.6
+python-jose==3.3.0
+cryptography==45.0.5
+passlib==1.7.4
+bcrypt==4.2.0
+sqlalchemy>=2.0.46
+aiosqlite==0.20.0  # SQLite异步驱动
+alembic==1.12.1
+chromadb==0.4.22
+numpy<2.0
+sse-starlette==1.6.5
+httpx==0.25.2
+openai>=1.0.0
+python-dotenv==1.0.0
+pydantic-settings==2.13.0
+redis==5.0.1  # 可选，用于会话存储
+overrides==7.7.0
+
+# ChromaDB依赖
+onnxruntime>=1.24.1
+grpcio>=1.78.0
+pypika>=0.51.1
+mmh3>=5.2.0
+importlib-resources>=6.5.2
+chroma-hnswlib==0.7.3
+kubernetes>=35.0.0
+posthog>=2.0.0,<3.0.0
+pulsar-client>=3.10.0
+build>=1.4.0
+
+# Embedding 模型 (移植自 Multiego)
+sentence-transformers>=2.2.0
+modelscope>=1.9.0
+
+# OpenTelemetry依赖（ChromaDB需要）
+opentelemetry-api>=1.39.1
+opentelemetry-sdk>=1.39.1
+opentelemetry-instrumentation-fastapi>=0.60b1
+opentelemetry-exporter-otlp-proto-grpc>=1.39.1
+
+# 开发依赖
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+isort==5.12.0
+
+# 自动修复系统依赖
+psutil==5.9.8
+docker==7.0.0

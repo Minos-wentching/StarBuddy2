@@ -1,0 +1,71 @@
+/*
+ * 人格颜色定义 - 设计系统集成
+ *
+ * 此文件现在使用设计系统令牌 (design-system/tokens.css) 作为单一事实来源。
+ * 使用 manager / exiles / firefighters 作为唯一命名。
+ */
+
+/* 导入设计系统令牌（如果 tokens.css 未全局导入，此处定义备用值） */
+/* 注意：设计系统令牌已在 tokens.css 中定义，此处仅为后备方案 */
+
+:root {
+  /* 人格颜色变量 - 映射到设计系统 */
+  --persona-manager: var(--persona-manager, #5B9BD5);
+  --persona-exiles: var(--persona-exiles, #F4B183);
+  --persona-firefighters: var(--persona-firefighters, #A9D18E);
+  --persona-counselor: var(--persona-counselor, #B4A7D6);
+  --persona-calm: var(--persona-calm, #95B8D1);
+
+}
+
+/* 人格颜色类 - 使用 CSS 变量确保一致性 */
+.persona-manager {
+  color: var(--persona-manager);
+  background-color: color-mix(in srgb, var(--persona-manager) 10%, transparent);
+}
+
+.persona-exiles {
+  color: var(--persona-exiles);
+  background-color: color-mix(in srgb, var(--persona-exiles) 10%, transparent);
+}
+
+.persona-firefighters {
+  color: var(--persona-firefighters);
+  background-color: color-mix(in srgb, var(--persona-firefighters) 10%, transparent);
+}
+
+.persona-counselor {
+  color: var(--persona-counselor);
+  background-color: color-mix(in srgb, var(--persona-counselor) 10%, transparent);
+}
+
+.persona-calm {
+  color: var(--persona-calm);
+  background-color: color-mix(in srgb, var(--persona-calm) 10%, transparent);
+}
+
+/* 辅助类：深色背景上的浅色文本 */
+.persona-manager-inverse {
+  background-color: var(--persona-manager);
+  color: white;
+}
+
+.persona-exiles-inverse {
+  background-color: var(--persona-exiles);
+  color: white;
+}
+
+.persona-firefighters-inverse {
+  background-color: var(--persona-firefighters);
+  color: white;
+}
+
+.persona-counselor-inverse {
+  background-color: var(--persona-counselor);
+  color: white;
+}
+
+.persona-calm-inverse {
+  background-color: var(--persona-calm);
+  color: white;
+}
