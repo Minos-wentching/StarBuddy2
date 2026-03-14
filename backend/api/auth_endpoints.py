@@ -6,7 +6,7 @@
 
 import logging
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 MAX_ONBOARDING_ARCHIVES = 20
+
+MAX_MUSIC_UPLOAD_BYTES = 25 * 1024 * 1024  # 25MB
 
 
 def _normalize_trauma_event(raw: dict, index: int = 0, default_source: str = "onboarding_fixed") -> dict:
@@ -560,6 +562,59 @@ async def parse_onboarding(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="解析问卷失败，请稍后重试"
         )
+
+
+@router.post("/onboarding/music-upload", responses={401: {"model": ErrorResponse}})
+async def upload_onboarding_music(
+    file: UploadFile = File(...),
+    user_id: int = Depends(get_current_user_id),
+):
+    """
+    上传监护人提供的本地音乐文件（可选）。
+
+    返回：{ url, filename }
+    - 文件会保存到 ./data/uploads/music/<user_id>/ 下
+    - 通过后端静态路由 /uploads/ 访问（见 backend/main.py）
+    """
+    import os
+    import uuid
+    from pathlib import Path
+
+    if not file:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="未选择文件")
+
+    content_type = str(file.content_type or "").lower()
+    if not content_type.startswith("audio/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="仅支持音频文件上传")
+
+    raw_name = os.path.basename(str(file.filename or "music"))
+    safe_name = raw_name.replace("..", "").replace("/", "_").replace("\\", "_").strip() or "music"
+    suffix = Path(safe_name).suffix[:12]
+    unique_name = f"{uuid.uuid4().hex}{suffix}"
+
+    base_dir = Path("data") / "uploads" / "music" / str(user_id)
+    base_dir.mkdir(parents=True, exist_ok=True)
+    dest = base_dir / unique_name
+
+    size = 0
+    try:
+        with dest.open("wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > MAX_MUSIC_UPLOAD_BYTES:
+                    raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="文件过大")
+                f.write(chunk)
+    finally:
+        try:
+            await file.close()
+        except Exception:
+            pass
+
+    url = f"/uploads/music/{user_id}/{unique_name}"
+    return {"url": url, "filename": safe_name}
 
 
 @router.get("/onboarding/archives", response_model=OnboardingArchiveListResponse, responses={401: {"model": ErrorResponse}})

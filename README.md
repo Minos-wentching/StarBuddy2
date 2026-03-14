@@ -75,6 +75,18 @@ npm run dev -- --host 127.0.0.1 --port 5173
   - 前端：`$env:VITE_PROXY_TARGET="http://127.0.0.1:8001"`
 - **想重新选择端角色**：清空浏览器 localStorage 的 `app_role`（或换无痕窗口）。
 
+### 本地免费 AI（可选，推荐 Ollama）
+如果你不配置 `DASHSCOPE_API_KEY`，后端会优先尝试使用本地 Ollama（若可用），否则退回到“非固定”的降级回复。
+
+```powershell
+$env:LOCAL_LLM_PROVIDER="ollama"
+$env:OLLAMA_BASE_URL="http://127.0.0.1:11434"
+$env:OLLAMA_MODEL="qwen2.5:7b"
+```
+
+### 放置文献（可选）
+把你希望 AI 参考的资料放到 `references/`（建议 `.txt/.md`），后端会做轻量关键词摘录并注入对话上下文。
+
 ## Docker Compose（可选）
 在仓库根目录：
 

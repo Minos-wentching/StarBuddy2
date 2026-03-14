@@ -35,12 +35,29 @@
         </div>
       </div>
 
+      <!-- Encouragement interstitial (10s fade-out) -->
+      <div v-else-if="mode === 'encourage'" class="encourage-wrap">
+        <div class="encourage-text">{{ encouragementText }}</div>
+      </div>
+
       <!-- Instructions (page 2) -->
       <div v-else class="instruction-wrap">
         <Transition name="fade">
           <div v-if="showContinueHint" class="continue-hint">点击黑色按钮继续</div>
         </Transition>
       </div>
+    </div>
+
+    <!-- Dog companion (non-blocking) -->
+    <div class="dog-wrap" :class="dogClass" aria-hidden="true">
+      <!-- Simple SVG silhouette, color/size controlled by CSS -->
+      <svg class="dog" viewBox="0 0 64 64" role="img">
+        <path
+          d="M18 30c-3 0-6 2-7 5l-2 8c-1 3 1 6 4 6h4v6c0 2 2 4 4 4h4c2 0 4-2 4-4v-6h10v6c0 2 2 4 4 4h4c2 0 4-2 4-4v-7c4-1 7-5 7-9v-8c0-4-3-7-7-7h-8l-6-4c-2-1-5-1-7 0l-5 3h-3z"
+        />
+        <circle cx="44" cy="28" r="2.2" />
+        <path d="M50 26l5-6c1-1 3 0 2 2l-4 6" />
+      </svg>
     </div>
 
     <!-- Fixed bottom buttons (always) -->
@@ -87,8 +104,9 @@ const defaultTheme = () => ({
   transitionDurationSec: 30
 })
 
-const mode = ref('name') // name | breathing | instructions
+const mode = ref('name') // name | breathing | encourage | instructions
 const menuOpen = ref(false)
+const encouragementText = ref('你真棒')
 
 // Theme / background
 const bgColor = ref('#0B1B3A')
@@ -107,6 +125,9 @@ const instructions = ref([...DEFAULT_INSTRUCTIONS])
 const instructionIndex = ref(0)
 const showContinueHint = ref(false)
 let instructionTimer = null
+let encourageTimer = null
+const pendingInstructionIndex = ref(0)
+const blackClickCount = ref(0)
 
 // Breathing
 const breathingWord = ref('吸气')
@@ -121,6 +142,7 @@ const breathingCycle = ref(0) // 0..3
 const promptText = computed(() => {
   if (mode.value === 'name') return '你叫什么名字'
   if (mode.value === 'breathing') return breathingDone.value ? '你感觉就好一点了吗' : '深呼吸'
+  if (mode.value === 'encourage') return encouragementText.value || '你真棒'
   return instructions.value[instructionIndex.value] || ''
 })
 const promptKey = computed(() => `${mode.value}:${instructionIndex.value}:${breathingDone.value ? 'done' : 'run'}`)
@@ -151,6 +173,7 @@ async function loadProfileAndSettings() {
       const list = Array.isArray(res.data?.instructions) ? res.data.instructions : []
       instructions.value = list.length ? list.map((x) => String(x || '').trim()).filter(Boolean) : [...DEFAULT_INSTRUCTIONS]
       applyTheme(res.data?.theme)
+      encouragementText.value = String(res.data?.encouragementText || '你真棒').trim() || '你真棒'
     } else {
       const raw = localStorage.getItem('patient_settings_local')
       if (raw) {
@@ -158,15 +181,18 @@ async function loadProfileAndSettings() {
         const list = Array.isArray(parsed?.instructions) ? parsed.instructions : []
         instructions.value = list.length ? list.map((x) => String(x || '').trim()).filter(Boolean) : [...DEFAULT_INSTRUCTIONS]
         applyTheme(parsed?.theme)
+        encouragementText.value = String(parsed?.encouragementText || '你真棒').trim() || '你真棒'
       } else {
         instructions.value = [...DEFAULT_INSTRUCTIONS]
         applyTheme(defaultTheme())
+        encouragementText.value = '你真棒'
       }
     }
   } catch (e) {
     console.warn('Failed to load patient settings:', e)
     instructions.value = [...DEFAULT_INSTRUCTIONS]
     applyTheme(defaultTheme())
+    encouragementText.value = '你真棒'
   }
 }
 
@@ -194,6 +220,13 @@ function clearInstructionTimer() {
   if (instructionTimer) {
     clearTimeout(instructionTimer)
     instructionTimer = null
+  }
+}
+
+function clearEncourageTimer() {
+  if (encourageTimer) {
+    clearTimeout(encourageTimer)
+    encourageTimer = null
   }
 }
 
@@ -257,6 +290,50 @@ function enterInstructions() {
   startInstructionTimer()
 }
 
+const dogStage = computed(() => {
+  const c = Number(blackClickCount.value || 0)
+  if (c > 8) return 3
+  if (c > 4) return 2
+  if (c > 2) return 1
+  return 0
+})
+
+const dogClass = computed(() => {
+  if (dogStage.value === 3) return 'run big'
+  if (dogStage.value === 2) return 'walk big'
+  if (dogStage.value === 1) return 'big'
+  return 'small'
+})
+
+async function incrementBlackClickCount() {
+  try {
+    if (hasToken()) {
+      const res = await patientApi.incrementBlackClick()
+      blackClickCount.value = Number(res.data?.blackClickCount || blackClickCount.value || 0)
+      return
+    }
+  } catch (e) {
+    console.warn('Failed to increment black click:', e)
+  }
+
+  const next = Number(blackClickCount.value || 0) + 1
+  blackClickCount.value = next
+  localStorage.setItem('patient_black_click_count_local', String(next))
+}
+
+function showEncouragementThenNextInstruction(nextIndex) {
+  clearInstructionTimer()
+  clearEncourageTimer()
+  showContinueHint.value = false
+  pendingInstructionIndex.value = nextIndex
+  mode.value = 'encourage'
+  encourageTimer = setTimeout(() => {
+    instructionIndex.value = pendingInstructionIndex.value
+    mode.value = 'instructions'
+    startInstructionTimer()
+  }, 10000)
+}
+
 async function handleBlack() {
   nameError.value = ''
 
@@ -285,9 +362,12 @@ async function handleBlack() {
     return
   }
 
-  // instructions mode
-  instructionIndex.value = (instructionIndex.value + 1) % Math.max(1, instructions.value.length)
-  startInstructionTimer()
+  if (mode.value === 'encourage') return
+
+  // instructions mode: insert 10s encouragement between transitions
+  await incrementBlackClickCount()
+  const nextIndex = (instructionIndex.value + 1) % Math.max(1, instructions.value.length)
+  showEncouragementThenNextInstruction(nextIndex)
 }
 
 function goSafetyIsland() {
@@ -306,24 +386,44 @@ watch(
     if (m === 'instructions') {
       startInstructionTimer()
       stopBreathingTimers()
+      clearEncourageTimer()
       return
     }
     if (m === 'breathing') {
       clearInstructionTimer()
+      clearEncourageTimer()
+      return
+    }
+    if (m === 'encourage') {
+      clearInstructionTimer()
+      stopBreathingTimers()
       return
     }
     // name
     clearInstructionTimer()
     stopBreathingTimers()
+    clearEncourageTimer()
   }
 )
 
 onMounted(async () => {
+  try {
+    if (hasToken()) {
+      const res = await patientApi.getMetrics()
+      blackClickCount.value = Number(res.data?.blackClickCount || 0)
+    } else {
+      blackClickCount.value = Number(localStorage.getItem('patient_black_click_count_local') || 0)
+    }
+  } catch (e) {
+    console.warn('Failed to load patient metrics:', e)
+    blackClickCount.value = Number(localStorage.getItem('patient_black_click_count_local') || 0)
+  }
   await loadProfileAndSettings()
 })
 
 onBeforeUnmount(() => {
   clearInstructionTimer()
+  clearEncourageTimer()
   stopBreathingTimers()
 })
 </script>
@@ -374,6 +474,8 @@ onBeforeUnmount(() => {
   max-width: 820px;
   line-height: 1.15;
   transform: translateY(-70px);
+  position: relative;
+  z-index: 20;
 }
 
 .name-wrap {
@@ -406,7 +508,8 @@ onBeforeUnmount(() => {
 }
 
 .breathing-wrap,
-.instruction-wrap {
+.instruction-wrap,
+.encourage-wrap {
   width: 100%;
   display: grid;
   place-items: center;
@@ -445,6 +548,55 @@ onBeforeUnmount(() => {
   letter-spacing: 2px;
   transform: translateY(-10px);
   opacity: 0.92;
+}
+
+.encourage-text {
+  color: white;
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-align: center;
+  opacity: 1;
+  animation: fade-out-10 10s linear forwards;
+}
+@keyframes fade-out-10 {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.dog-wrap {
+  position: fixed;
+  left: 14px;
+  bottom: calc(118px + env(safe-area-inset-bottom));
+  z-index: 12;
+  pointer-events: none;
+  opacity: 0.86;
+}
+.dog {
+  display: block;
+  width: 48px;
+  height: 48px;
+  fill: rgba(220, 220, 220, 0.92);
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.25));
+}
+.dog-wrap.big .dog {
+  width: 68px;
+  height: 68px;
+}
+.dog-wrap.walk {
+  animation: dog-walk 0.65s ease-in-out infinite;
+}
+@keyframes dog-walk {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(3px) translateY(-1px); }
+}
+.dog-wrap.run {
+  left: -90px;
+  animation: dog-run 2.8s linear infinite;
+}
+@keyframes dog-run {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(100vw + 180px)); }
 }
 
 .patient-bottom {

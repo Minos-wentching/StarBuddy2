@@ -301,8 +301,8 @@
 	      <div v-if="authStore.needsOnboarding && displayMessages.length === 0 && !isLoading" class="onboarding-area">
 	        <div class="onboarding-card glass-panel">
 	          <v-icon size="42" color="rgba(255,255,255,0.72)" class="mb-3">mdi-card-text-outline</v-icon>
-	          <h2 class="onboarding-title">先认识一下你</h2>
-	          <p class="onboarding-subtitle">我们会根据答案为你匹配最合适的星球伙伴</p>
+	          <h2 class="onboarding-title">先认识一下孩子</h2>
+	          <p class="onboarding-subtitle">我们会根据你的回答更好地理解孩子，并在用户端提供更贴合的引导</p>
           <v-checkbox
             v-model="useDemoOnboardingAnswers"
             class="onboarding-demo-toggle mb-2"
@@ -315,15 +315,37 @@
           <div class="onboarding-grid mb-3">
             <v-card class="onboarding-question-card" variant="tonal">
               <v-card-text>
-                <div class="onboarding-question-text mb-2">1. 描述一个让你感到不舒服的感官体验（比如噪音、强光、某种触感），你通常怎么应对？</div>
-                <v-textarea class="onboarding-answer-input" v-model="onboardingAnswers.question_1" rows="2" auto-grow hide-details variant="outlined" placeholder="简要描述即可" />
+                <div class="onboarding-question-text mb-2">1. 您的孩子的兴趣爱好是什么？有某一突出的特长？</div>
+                <v-textarea class="onboarding-answer-input" v-model="onboardingAnswers.question_1" rows="2" auto-grow hide-details variant="outlined" placeholder="例如：喜欢画画/乐高/动物/太空…；特长：记忆力/拼图/音乐节奏…" />
               </v-card-text>
             </v-card>
 
             <v-card class="onboarding-question-card" variant="tonal">
               <v-card-text>
-                <div class="onboarding-question-text mb-2">2. 当日常安排突然改变时，你会有什么反应？你有什么特别的兴趣或习惯？</div>
-                <v-textarea class="onboarding-answer-input" v-model="onboardingAnswers.question_2" rows="2" auto-grow hide-details variant="outlined" placeholder="鼓励写原话，也可以用几个词描述自己" />
+                <div class="onboarding-question-text mb-2">2. 您的孩子喜欢的音乐类型是什么？请举例。如有本地音乐的链接，请上传。</div>
+                <v-textarea class="onboarding-answer-input" v-model="onboardingAnswers.question_2" rows="2" auto-grow hide-details variant="outlined" placeholder="例如：轻音乐/儿歌/古典/钢琴/白噪音…；举例：某某曲目/歌手…" />
+                <v-text-field
+                  v-model="onboardingMusicUrl"
+                  class="onboarding-music-url mt-3"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  label="音乐链接（可选）"
+                  placeholder="例如：https://... 或本机/局域网可访问的链接"
+                />
+                <v-file-input
+                  v-model="onboardingMusicFile"
+                  class="onboarding-music-file mt-3"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  label="上传音乐文件（可选）"
+                  accept="audio/*"
+                  prepend-icon="mdi-music"
+                />
+                <div v-if="onboardingMusicUploadUrl" class="hint-text mt-2">
+                  已上传：{{ onboardingMusicUploadUrl }}
+                </div>
               </v-card-text>
             </v-card>
           </div>
@@ -559,10 +581,14 @@ const onboardingAnswers = ref({
   question_1: '',
   question_2: '',
 })
+const onboardingMusicUrl = ref('')
+const onboardingMusicFile = ref(null)
+const onboardingMusicUploadUrl = ref('')
+const onboardingMusicUploading = ref(false)
 let diaryToastTimer = null
 const DEMO_ONBOARDING_ANSWERS = {
-  question_1: '食堂很吵的时候我会捂住耳朵，有时候会戴上耳机听白噪音。荧光灯闪烁的时候我也很难集中注意力，会一直盯着灯看。',
-  question_2: '如果突然换了教室我会很紧张，需要先去看看新教室长什么样才能安心。我特别喜欢画画和拼乐高，可以一个人玩很久。'
+  question_1: '喜欢画画和拼乐高，对太空和行星很感兴趣；特长是能长时间专注做一件事。',
+  question_2: '喜欢轻音乐/钢琴曲和白噪音。举例：舒缓的钢琴曲、雨声白噪音。'
 }
 const LAST_SCRIPT_KEY_PREFIX = 'starbuddy_last_script_u'
 const LAST_ONBOARDING_ANSWERS_KEY_PREFIX = 'starbuddy_last_onboarding_answers_u'
@@ -1171,7 +1197,29 @@ const submitOnboarding = async () => {
   if (!canSubmitOnboarding.value) return
   onboardingSubmitting.value = true
   try {
-    const result = await authStore.submitOnboarding(onboardingAnswers.value, authStore.currentSessionId)
+    onboardingMusicUploadUrl.value = ''
+    if (onboardingMusicFile.value) {
+      onboardingMusicUploading.value = true
+      try {
+        const uploaded = await authStore.uploadOnboardingMusic(onboardingMusicFile.value)
+        if (uploaded?.success && uploaded?.data?.url) {
+          onboardingMusicUploadUrl.value = String(uploaded.data.url)
+        }
+      } catch (e) {
+        console.warn('音乐上传失败:', e)
+      } finally {
+        onboardingMusicUploading.value = false
+      }
+    }
+
+    const result = await authStore.submitOnboarding(
+      onboardingAnswers.value,
+      authStore.currentSessionId,
+      {
+        musicUrl: String(onboardingMusicUrl.value || '').trim(),
+        musicUploadUrl: String(onboardingMusicUploadUrl.value || '').trim(),
+      }
+    )
     if (result.success) {
       try {
         const uid = authStore.userId

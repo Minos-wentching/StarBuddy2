@@ -92,5 +92,14 @@ export const authApi = {
   getOnboardingArchives: () => apiClient.get('/api/auth/onboarding/archives'),
 
   // 恢复人格画像版本
-  restoreOnboardingArchive: (payload) => apiClient.post('/api/auth/onboarding/restore', payload)
+  restoreOnboardingArchive: (payload) => apiClient.post('/api/auth/onboarding/restore', payload),
+
+  // 监护人问卷：上传本地音乐（可选）
+  uploadOnboardingMusic: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post('/api/auth/onboarding/music-upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  }
 }

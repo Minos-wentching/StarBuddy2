@@ -18,9 +18,10 @@ from ..services.counselor_service import CounselorService
 from ..services.manager_service import ManagerService
 from ..services.memory_service import MemoryStore
 from ..services.prompts import EXILES_DIARY_PROMPT_TEMPLATE, FIREFIGHTERS_DIARY_PROMPT_TEMPLATE
+from ..services.reference_library import find_reference_snippets, format_snippets_for_prompt
 
 from ..models.schemas import DialogueResponse, CounselorReport, ManagerDecision
-from ..database.models import DialogueHistory, Session, HealingImage
+from ..database.models import DialogueHistory, Session, HealingImage, User
 from ..api.sse_endpoints import connection_manager
 from sqlalchemy import select, delete, update
 from ..api_config import config
@@ -55,6 +56,16 @@ class DialogueService:
             if not session:
                 raise ValueError(f"Session not found: {session_id}")
 
+            # 1.1 用户 settings（用于监护人补充信息等）
+            user_settings: dict = {}
+            try:
+                user_result = await self.db.execute(select(User).where(User.id == session.user_id))
+                user = user_result.scalar_one_or_none()
+                if user:
+                    user_settings = dict(user.settings or {})
+            except Exception as e:
+                logger.warning(f"读取用户settings失败: {e}")
+
             # 2. 历史上下文（保持与 Multiego 一致：chat_history[-8:]）
             history_turns = await self.get_history(session_id, limit=8)
             history_turns = list(reversed(history_turns))
@@ -63,7 +74,14 @@ class DialogueService:
             # 3. 用户背景信息
             persona_state = session.persona_state or {}
             existing_facts = persona_state.get("user_facts", [])
-            user_background = self._build_user_background(existing_facts)
+            user_background = self._build_user_background(existing_facts) + self._build_guardian_intake_context(user_settings)
+            try:
+                ref_snips = find_reference_snippets(message)
+                ref_text = format_snippets_for_prompt(ref_snips)
+                if ref_text:
+                    user_background = f"{user_background}\n\n{ref_text}"
+            except Exception as e:
+                logger.warning(f"本地参考资料检索失败（忽略）: {e}")
 
             # 4. 始终由 Manager 回复（Only Manager chats）
             manager_reply = await self.manager.chat(
@@ -657,6 +675,33 @@ class DialogueService:
             return ""
         facts_text = "\n".join(f"- {f}" for f in facts)
         return f"\n\n【用户背景信息】\n{facts_text}"
+
+    def _build_guardian_intake_context(self, user_settings: Dict[str, Any]) -> str:
+        """构建监护人补充信息上下文（用于更贴合的引导与沟通）"""
+        settings = user_settings if isinstance(user_settings, dict) else {}
+        intake = settings.get("guardian_intake", {})
+        if not isinstance(intake, dict):
+            return ""
+
+        interests = str(intake.get("child_interests") or "").strip()
+        music = str(intake.get("child_music") or "").strip()
+        music_url = str(intake.get("music_url") or "").strip()
+        music_upload_url = str(intake.get("music_upload_url") or "").strip()
+
+        rows = []
+        if interests:
+            rows.append(f"- 兴趣爱好/特长：{interests[:200]}")
+        if music:
+            rows.append(f"- 喜欢的音乐类型/举例：{music[:200]}")
+        if music_url:
+            rows.append(f"- 音乐链接：{music_url[:200]}")
+        if music_upload_url:
+            rows.append(f"- 已上传音乐：{music_upload_url[:200]}")
+
+        if not rows:
+            return ""
+
+        return "\n\n【监护人补充信息】\n" + "\n".join(rows)
 
     def _build_profile_context(self, persona_state: Dict[str, Any]) -> str:
         """构建首次问卷画像上下文"""

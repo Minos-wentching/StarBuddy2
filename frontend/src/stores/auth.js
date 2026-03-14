@@ -366,12 +366,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  const submitOnboarding = async (answers, sessionId = '') => {
+  const submitOnboarding = async (answers, sessionId = '', meta = {}) => {
     isLoading.value = true
     error.value = null
     try {
       const response = await authApi.parseOnboarding({ answers, session_id: sessionId || undefined })
       const currentOnboarding = user.value?.settings?.ifs_onboarding || {}
+      const guardianIntake = {
+        child_interests: String(answers?.question_1 || '').trim(),
+        child_music: String(answers?.question_2 || '').trim(),
+        music_url: String(meta?.musicUrl || '').trim(),
+        music_upload_url: String(meta?.musicUploadUrl || '').trim(),
+        updated_at: new Date().toISOString(),
+      }
 
       const fixedSource = Array.isArray(currentOnboarding.trauma_events_fixed) && currentOnboarding.trauma_events_fixed.length
         ? currentOnboarding.trauma_events_fixed.map((event, index) => normalizeFixedOrb({
@@ -418,6 +425,7 @@ export const useAuthStore = defineStore('auth', () => {
         ...(user.value || {}),
         settings: {
           ...(user.value?.settings || {}),
+          guardian_intake: guardianIntake,
           ifs_onboarding_completed: true,
           ifs_onboarding: {
             ...currentOnboarding,
@@ -451,6 +459,17 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: false, error: error.value }
     } finally {
       isLoading.value = false
+    }
+  }
+
+  const uploadOnboardingMusic = async (file) => {
+    if (!file) return { success: false, error: '未选择文件' }
+    try {
+      const res = await authApi.uploadOnboardingMusic(file)
+      return { success: true, data: res.data }
+    } catch (err) {
+      const msg = err.response?.data?.detail || '音乐上传失败'
+      return { success: false, error: msg }
     }
   }
 
@@ -541,6 +560,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     refreshAccessToken,
     updateProfile,
+    uploadOnboardingMusic,
     submitOnboarding,
     getOnboardingArchives,
     restoreOnboardingArchive,

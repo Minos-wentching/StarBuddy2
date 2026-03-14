@@ -21,6 +21,7 @@ from ..models.schemas import (
     PatientProfileUpdate,
     PatientSettings,
     PatientSettingsUpdate,
+    PatientMetrics,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,20 @@ def _merge_patient_settings(settings: dict) -> PatientSettings:
         "transitionDurationSec": int(raw_theme.get("transitionDurationSec", 30) or 30),
     }
 
-    return PatientSettings(instructions=instructions, theme=theme)
+    encouragement = str(raw_settings.get("encouragementText") or "你真棒").strip() or "你真棒"
+
+    return PatientSettings(instructions=instructions, theme=theme, encouragementText=encouragement)
+
+
+def _read_patient_metrics(settings: dict) -> PatientMetrics:
+    raw_metrics = settings.get("patient_metrics", {})
+    raw_metrics = raw_metrics if isinstance(raw_metrics, dict) else {}
+    try:
+        count = int(raw_metrics.get("blackClickCount", 0) or 0)
+    except Exception:
+        count = 0
+    count = max(0, min(count, 1000000))
+    return PatientMetrics(blackClickCount=count)
 
 
 @router.get("/patient-profile", response_model=PatientProfile)
@@ -161,6 +175,7 @@ async def update_patient_settings(
     next_settings["patient_settings"] = {
         "instructions": instructions,
         "theme": theme,
+        "encouragementText": payload.encouragementText.strip() or "你真棒",
         "updated_at": datetime.utcnow().isoformat(),
     }
 
@@ -173,3 +188,45 @@ async def update_patient_settings(
     logger.info("patient_settings updated: user_id=%s", user_id)
     return _merge_patient_settings(next_settings)
 
+
+@router.get("/patient-metrics", response_model=PatientMetrics)
+async def get_patient_metrics(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取用户端交互指标"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    settings = dict(user.settings or {})
+    return _read_patient_metrics(settings)
+
+
+@router.post("/patient-metrics/black-click", response_model=PatientMetrics)
+async def increment_black_click(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """记录一次黑色按钮点击（用于小狗成长/动画等）"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    next_settings = dict(user.settings or {})
+    metrics = _read_patient_metrics(next_settings)
+    next_count = min(metrics.blackClickCount + 1, 1000000)
+    next_settings["patient_metrics"] = {
+        "blackClickCount": next_count,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    await db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(settings=next_settings, updated_at=datetime.utcnow())
+    )
+
+    return PatientMetrics(blackClickCount=next_count)

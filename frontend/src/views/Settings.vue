@@ -158,6 +158,17 @@
               />
             </div>
 
+            <div class="section-label" style="margin-top: 16px;">鼓励提示词（切换时展示 10 秒）</div>
+            <v-text-field
+              v-model="patientEncouragementText"
+              label="提示词"
+              variant="outlined"
+              density="compact"
+              color="white"
+              base-color="rgba(255,255,255,0.4)"
+              hide-details
+            />
+
             <div class="btn-row" style="margin-top: 14px; justify-content: flex-end; gap: 10px;">
               <v-btn variant="tonal" color="white" size="small" class="text-none" :loading="patientSaving" @click="savePatientSettings">
                 保存并同步
@@ -411,6 +422,7 @@ const patientTheme = reactive({
   transitionToColor: '',
   transitionDurationSec: 30
 })
+const patientEncouragementText = ref('你真棒')
 
 const normalizeHex = (v) => String(v || '').trim()
 
@@ -425,6 +437,8 @@ const applyPatientSettingsPayload = (payload) => {
   patientTheme.enableTransition = Boolean(theme.enableTransition)
   patientTheme.transitionToColor = normalizeHex(theme.transitionToColor || '')
   patientTheme.transitionDurationSec = Number(theme.transitionDurationSec || 30)
+
+  patientEncouragementText.value = String(payload?.encouragementText || '你真棒').trim() || '你真棒'
 }
 
 const loadPatientSettings = async () => {
@@ -468,6 +482,7 @@ const restorePatientDefaults = () => {
   patientTheme.enableTransition = false
   patientTheme.transitionToColor = ''
   patientTheme.transitionDurationSec = 30
+  patientEncouragementText.value = '你真棒'
   patientSaveHint.value = '已恢复默认（别忘了保存同步）'
 }
 
@@ -491,7 +506,8 @@ const savePatientSettings = async () => {
         enableTransition: Boolean(patientTheme.enableTransition),
         transitionToColor: patientTheme.enableTransition ? normalizeHex(patientTheme.transitionToColor) || null : null,
         transitionDurationSec: Number(patientTheme.transitionDurationSec || 30)
-      }
+      },
+      encouragementText: String(patientEncouragementText.value || '你真棒').trim() || '你真棒'
     }
 
     const res = await patientApi.updateSettings(payload)

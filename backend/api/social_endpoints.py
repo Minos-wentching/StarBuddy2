@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from ..database.database import get_db
-from ..database.models import Session, DriftBottle
+from ..database.models import Session, DriftBottle, User
 from ..models.schemas import ErrorResponse
 from .dependencies import get_current_user_id
 from ..services.external_apis import ExternalAPIService
@@ -204,6 +204,7 @@ async def _generate_bottle_agent_with_llm(
     persona_portrait: str,
     bottle_message: str,
     core_beliefs: list[str],
+    guardian_intake: Optional[dict] = None,
     timeout_sec: float = 8.0,
 ) -> tuple[dict[str, Any], str]:
     """Generate a human-like guide profile (identity + opening) from LLM. Falls back on errors."""
@@ -223,6 +224,7 @@ async def _generate_bottle_agent_with_llm(
         "persona_portrait": portrait,
         "bottle_message": message,
         "user_core_beliefs": beliefs,
+        "guardian_intake": guardian_intake if isinstance(guardian_intake, dict) else {},
     }
 
     try:
@@ -454,6 +456,14 @@ async def send_drift_bottle(
         matched_agent = None
         opening_reply = ""
         api_service = ExternalAPIService()
+        guardian_intake = {}
+        try:
+            user_result = await db.execute(select(User).where(User.id == user_id))
+            user = user_result.scalar_one_or_none()
+            if user and isinstance(user.settings, dict):
+                guardian_intake = user.settings.get("guardian_intake", {}) or {}
+        except Exception as e:
+            logger.warning(f"读取guardian_intake失败: {e}")
         try:
             agent_profile, opening_reply = await _generate_bottle_agent_with_llm(
                 api_service,
@@ -461,6 +471,7 @@ async def send_drift_bottle(
                 persona_portrait=persona_portrait,
                 bottle_message=message,
                 core_beliefs=core_beliefs,
+                guardian_intake=guardian_intake if isinstance(guardian_intake, dict) else {},
             )
             _register_dynamic_agent(agent_profile["anonymous_id"], agent_profile)
             # Return safe fields to client (no prompt leakage necessary for UI).

@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .api_config import config, get_config
 from .utils.config_validator import log_config_summary
@@ -153,6 +154,16 @@ async def health_check():
 
 # 注册API路由
 app.include_router(api_router, prefix="/api")
+
+# 本地上传文件静态服务（开发/自部署使用）
+try:
+    from pathlib import Path
+
+    uploads_dir = Path("data") / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+except Exception as e:
+    logger.warning(f"静态上传目录挂载失败: {e}")
 
 # 根端点（主要用于健康检查）
 @app.get("/")

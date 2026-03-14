@@ -145,6 +145,15 @@ class APIConfig(BaseSettings):
     SSE_HEARTBEAT_INTERVAL: int = Field(default=30, env="SSE_HEARTBEAT_INTERVAL")
     SSE_RECONNECT_TIMEOUT: int = Field(default=5000, env="SSE_RECONNECT_TIMEOUT")
 
+    # ==================== 本地 LLM（免 API Key，可选） ====================
+    LOCAL_LLM_PROVIDER: str = Field(
+        default="",
+        env="LOCAL_LLM_PROVIDER",
+        description="本地 LLM 提供方：ollama|none。留空表示仅在缺少 DASHSCOPE_API_KEY 时尝试使用 ollama。"
+    )
+    OLLAMA_BASE_URL: str = Field(default="http://127.0.0.1:11434", env="OLLAMA_BASE_URL")
+    OLLAMA_MODEL: str = Field(default="qwen2.5:7b", env="OLLAMA_MODEL")
+
     # ==================== 魔塔免费额度配置 ====================
     MODEL_SCOPE_MAX_REQUESTS_PER_DAY: int = Field(default=1000, env="MODEL_SCOPE_MAX_REQUESTS_PER_DAY")
     MODEL_SCOPE_RATE_LIMIT_PER_MINUTE: int = Field(default=10, env="MODEL_SCOPE_RATE_LIMIT_PER_MINUTE")

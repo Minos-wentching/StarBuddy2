@@ -117,6 +117,7 @@ class PatientSettings(BaseModel):
     """用户端设置：指令列表与主题"""
     instructions: List[str] = Field(default_factory=list)
     theme: PatientTheme = Field(default_factory=PatientTheme)
+    encouragementText: str = Field("你真棒", min_length=1, max_length=20)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -125,6 +126,14 @@ class PatientSettingsUpdate(BaseModel):
     """更新用户端设置"""
     instructions: List[str] = Field(default_factory=list)
     theme: PatientTheme = Field(default_factory=PatientTheme)
+    encouragementText: str = Field("你真棒", min_length=1, max_length=20)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class PatientMetrics(BaseModel):
+    """用户端交互指标（用于小狗成长等）"""
+    blackClickCount: int = Field(0, ge=0, le=1000000)
 
     model_config = ConfigDict(extra="forbid")
 

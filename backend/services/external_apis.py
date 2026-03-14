@@ -43,7 +43,12 @@ class ExternalAPIService:
             logger.info(f"ExternalAPIService initialized with base_url: {base_url}")
         else:
             self.client = None
-            logger.warning("DASHSCOPE_API_KEY not set, ExternalAPIService will use mock responses")
+            logger.warning("DASHSCOPE_API_KEY not set, ExternalAPIService will try local LLM (if configured) or use mock responses")
+
+        provider = (getattr(config, "LOCAL_LLM_PROVIDER", "") or "").strip().lower()
+        self.local_provider = provider or ("ollama" if not api_key else "none")
+        self.ollama_base_url = (getattr(config, "OLLAMA_BASE_URL", "") or "http://127.0.0.1:11434").rstrip("/")
+        self.ollama_model = getattr(config, "OLLAMA_MODEL", "") or "qwen2.5:7b"
 
         # 图像生成仍使用 httpx (DashScope 专有 API)
         # z-image-turbo 同步生成可能需要更长时间
@@ -62,6 +67,13 @@ class ExternalAPIService:
     ) -> Union[str, Generator[str, None, None]]:
         """生成对话响应"""
         if not self.client:
+            if self.local_provider == "ollama":
+                try:
+                    if stream:
+                        return self._generate_local_stream(persona, message, context=context, history=history, system_prompt=system_prompt)
+                    return await self._generate_ollama_response(persona, message, context=context, history=history, system_prompt=system_prompt)
+                except Exception as e:
+                    logger.warning(f"Local LLM failed, falling back to mock response: {e}")
             logger.info(f"Using mock response for {persona} because DASHSCOPE_API_KEY is not set")
             return await self._generate_mock_response(persona, message)
 
@@ -260,13 +272,83 @@ class ExternalAPIService:
 
     async def _generate_mock_response(self, persona: str, message: str) -> str:
         """降级方案"""
-        mock_map = {
-            "manager": "我能理解你的感受，这种情绪确实值得我们深入探讨。",
-            "exiles": "我好难受！我想要立刻摆脱这种感觉！",
-            "firefighters": "我们先稳住，先把痛苦压下来。",
-            "counselor": "从你的叙述中，我看到了一种深层的心理防御机制在运作。"
+        snippet = str(message or "").strip()
+        if len(snippet) > 70:
+            snippet = snippet[:70].rstrip() + "…"
+
+        if persona == "manager":
+            return f"我听到了：{snippet}\n如果愿意的话，你能说说此刻最明显的感觉是什么吗？"
+        if persona == "exiles":
+            return f"我听到了：{snippet}\n这听起来真的很难受。你希望先被怎么安慰一下？"
+        if persona == "firefighters":
+            return f"我听到了：{snippet}\n我们先把节奏放慢一点：先呼气，再说下一句。"
+        if persona == "counselor":
+            return f"我听到了：{snippet}\n我们可以先做一个小的结构化回顾：触发点→感受→反应→结果。"
+        return f"我听到了：{snippet}"
+
+    async def _generate_ollama_response(
+        self,
+        persona: str,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        history: Optional[List[Dict[str, str]]] = None,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        """使用 Ollama 本地模型生成回复（免 API Key，需本机安装 Ollama 并拉取模型）"""
+        messages: list[dict[str, str]] = []
+
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        else:
+            persona_prompts = {
+                "manager": MANAGER_CHAT_PROMPT,
+                "exiles": EXILES_SYSTEM_PROMPT,
+                "firefighters": FIREFIGHTERS_SYSTEM_PROMPT,
+                "counselor": COUNSELOR_SYSTEM_PROMPT,
+            }
+            messages.append({"role": "system", "content": persona_prompts.get(persona, persona_prompts["manager"])})
+
+        if context:
+            messages.append({"role": "system", "content": f"当前上下文背景: {json.dumps(context, ensure_ascii=False)}"})
+
+        if history:
+            messages.extend(history)
+
+        messages.append({"role": "user", "content": message})
+
+        url = f"{self.ollama_base_url}/api/chat"
+        payload = {
+            "model": self.ollama_model,
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": 0.7 if persona == "exiles" else 0.5,
+            },
         }
-        return mock_map.get(persona, "好的，我听到了。")
+
+        # Ollama local call: keep short timeout to avoid hanging the whole request.
+        async with httpx.AsyncClient(timeout=httpx.Timeout(12.0, connect=2.0)) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        content = (((data or {}).get("message") or {}).get("content") or "").strip()
+        return content or await self._generate_mock_response(persona, message)
+
+    async def _generate_local_stream(
+        self,
+        persona: str,
+        message: str,
+        context: Optional[Dict[str, Any]] = None,
+        history: Optional[List[Dict[str, str]]] = None,
+        system_prompt: Optional[str] = None,
+    ):
+        """本地模型流式回退：当前以分段 yield 的方式模拟 stream。"""
+        text = await self._generate_ollama_response(persona, message, context=context, history=history, system_prompt=system_prompt)
+        # Yield in small chunks for UI smoothness
+        chunk_size = 24
+        for i in range(0, len(text), chunk_size):
+            yield text[i:i + chunk_size]
 
     async def close(self):
         """关闭客户端"""
