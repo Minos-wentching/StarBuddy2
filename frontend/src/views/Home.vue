@@ -83,9 +83,6 @@
             <v-list-item :to="'/report'" prepend-icon="mdi-file-document-outline">
               <v-list-item-title>成长报告</v-list-item-title>
             </v-list-item>
-            <v-list-item :to="'/social'" prepend-icon="mdi-account-heart">
-              <v-list-item-title>星际连线</v-list-item-title>
-            </v-list-item>
             <v-divider />
             <v-list-item @click="handleLogout" prepend-icon="mdi-logout">
               <v-list-item-title>退出</v-list-item-title>

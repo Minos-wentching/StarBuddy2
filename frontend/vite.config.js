@@ -18,7 +18,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api/sse': {
-        target: 'http://backend:8000',
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
         // SSE requires no buffering and long timeout
@@ -33,7 +33,7 @@ export default defineConfig({
         proxyTimeout: 0,
       },
       '/api': {
-        target: 'http://backend:8000',
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:8000',
         changeOrigin: true,
         secure: false
       }

@@ -1,22 +1,18 @@
 <template>
-  <div v-if="!isHidden" class="dock-root" :style="dockStyle">
+  <div v-if="appStore.isGuardian && !isHidden" class="dock-root" :style="dockStyle">
     <Transition name="dock-menu">
       <div v-if="open" class="dock-menu glass">
         <button class="dock-item" type="button" @click="goHome">
           <v-icon size="18">mdi-home-variant</v-icon>
           <span>记忆中枢</span>
         </button>
-        <button class="dock-item" type="button" @click="goScripts">
-          <v-icon size="18">mdi-book-open-variant</v-icon>
-          <span>选一条线路</span>
-        </button>
         <button class="dock-item" type="button" @click="goReport">
           <v-icon size="18">mdi-map-marker-radius</v-icon>
           <span>看我的星图</span>
         </button>
-        <button class="dock-item" type="button" @click="goBottle">
-          <v-icon size="18">mdi-bottle-wine</v-icon>
-          <span>拾一封信</span>
+        <button class="dock-item" type="button" @click="goSettings">
+          <v-icon size="18">mdi-cog</v-icon>
+          <span>更多选项</span>
         </button>
       </div>
     </Transition>
@@ -34,10 +30,12 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAppStore } from '@/stores/app'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const appStore = useAppStore()
 
 const open = ref(false)
 
@@ -74,16 +72,12 @@ function goHome() {
   goRequireAuth('/')
 }
 
-function goScripts() {
-  goRequireAuth('/showcase')
-}
-
 function goReport() {
   goRequireAuth('/report')
 }
 
-function goBottle() {
-  goRequireAuth('/social?tab=bottle&action=pick')
+function goSettings() {
+  goRequireAuth('/settings')
 }
 </script>
 

@@ -1,7 +1,7 @@
 <template>
   <v-app id="app">
     <!-- 导航栏 - 在 Home 路由隐藏 -->
-    <v-app-bar v-if="authStore.isAuthenticated && !isHomeRoute" prominent class="global-app-bar">
+    <v-app-bar v-if="authStore.isAuthenticated && !isHomeRoute && !hideGlobalUI" prominent class="global-app-bar">
       <v-btn icon @click="router.push('/')"><v-icon>mdi-arrow-left</v-icon></v-btn>
       <v-toolbar-title>星伴 StarBuddy</v-toolbar-title>
       <v-spacer></v-spacer>
@@ -56,7 +56,7 @@
     </v-snackbar>
 
     <!-- SSE连接状态 - 在 Home 路由隐藏 (Home 有自己的 HUD) -->
-    <v-footer v-if="authStore.isAuthenticated && !isHomeRoute" app class="px-4 global-footer">
+    <v-footer v-if="authStore.isAuthenticated && !isHomeRoute && !hideGlobalUI" app class="px-4 global-footer">
       <v-chip
         :color="sseConnected ? 'green' : 'red'"
         size="small"
@@ -82,9 +82,9 @@
     </v-overlay>
 
     <!-- Global quick access + guide -->
-    <FloatingDock />
-    <GuideBubble />
-    <CouncilFlashOverlay />
+    <FloatingDock v-if="!hideGlobalUI" />
+    <GuideBubble v-if="!hideGlobalUI" />
+    <CouncilFlashOverlay v-if="!hideGlobalUI" />
   </v-app>
 </template>
 
@@ -94,6 +94,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePersonaStore } from '@/stores/persona'
 import { useSSE } from '@/composables/useSSE'
+import { useAppStore } from '@/stores/app'
 import FloatingDock from '@/components/FloatingDock.vue'
 import GuideBubble from '@/components/GuideBubble.vue'
 import CouncilFlashOverlay from '@/components/CouncilFlashOverlay.vue'
@@ -102,11 +103,13 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const personaStore = usePersonaStore()
+const appStore = useAppStore()
 
 const globalLoading = ref(false)
 
 // Check if current route is Home (immersive mode)
 const isHomeRoute = computed(() => route.path === '/' || route.name === 'Home')
+const hideGlobalUI = computed(() => Boolean(route.meta?.hideGlobalUI) || appStore.isPatient)
 
 // Snackbar
 const snackbar = ref({
@@ -180,6 +183,7 @@ const { connected: sseConnected } = useSSE(
     if (!authStore.isAuthenticated) return ''
     // Home 路由有自己独立的 SSE 连接，这里跳过避免双重连接
     if (route.path === '/' || route.name === 'Home') return ''
+    if (hideGlobalUI.value) return ''
     return authStore.currentSessionId
   }
 )

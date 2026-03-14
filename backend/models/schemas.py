@@ -92,6 +92,43 @@ class UserUpdate(BaseModel):
     settings: Optional[Dict[str, Any]] = None
 
 
+# ==================== 用户端（孤独症患者端）设置 ====================
+class PatientProfile(BaseModel):
+    """用户端档案（用于引导页展示/存储的名字）"""
+    display_name: str = Field("", max_length=50)
+
+
+class PatientProfileUpdate(BaseModel):
+    """更新用户端档案"""
+    display_name: str = Field(..., min_length=1, max_length=50)
+
+
+class PatientTheme(BaseModel):
+    """用户端主题设置"""
+    baseColor: str = Field("#0B1B3A", min_length=4, max_length=32)
+    enableTransition: bool = False
+    transitionToColor: Optional[str] = Field(None, min_length=4, max_length=32)
+    transitionDurationSec: int = Field(30, ge=1, le=600)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class PatientSettings(BaseModel):
+    """用户端设置：指令列表与主题"""
+    instructions: List[str] = Field(default_factory=list)
+    theme: PatientTheme = Field(default_factory=PatientTheme)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class PatientSettingsUpdate(BaseModel):
+    """更新用户端设置"""
+    instructions: List[str] = Field(default_factory=list)
+    theme: PatientTheme = Field(default_factory=PatientTheme)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 # ==================== 会话相关模式 ====================
 class SessionBase(BaseModel):
     """会话基础信息"""

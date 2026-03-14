@@ -64,6 +64,113 @@
         </div>
       </div>
 
+      <!-- 用户端设置（监护人端） -->
+      <div v-if="appStore.isGuardian" class="glass-card mb-4">
+        <div class="card-header">
+          <v-icon size="20" color="white" class="mr-2">mdi-account-child</v-icon>
+          <span class="card-title">用户端设置</span>
+        </div>
+        <div class="card-body">
+          <div v-if="patientLoading" class="text-center" style="padding: 10px 0; color: rgba(255,255,255,0.6)">
+            正在加载…
+          </div>
+
+          <div v-else>
+            <div class="section-label">指令列表</div>
+            <div class="instruction-list">
+              <div v-for="(ins, idx) in patientInstructions" :key="idx" class="instruction-row">
+                <v-text-field
+                  v-model="patientInstructions[idx]"
+                  label="指令"
+                  variant="outlined"
+                  density="compact"
+                  color="white"
+                  base-color="rgba(255,255,255,0.4)"
+                  hide-details
+                  class="instruction-input"
+                />
+                <div class="instruction-actions">
+                  <v-btn icon variant="text" size="small" :disabled="idx === 0" @click="moveInstruction(idx, idx - 1)">
+                    <v-icon size="18">mdi-arrow-up</v-icon>
+                  </v-btn>
+                  <v-btn icon variant="text" size="small" :disabled="idx === patientInstructions.length - 1" @click="moveInstruction(idx, idx + 1)">
+                    <v-icon size="18">mdi-arrow-down</v-icon>
+                  </v-btn>
+                  <v-btn icon variant="text" size="small" @click="removeInstruction(idx)">
+                    <v-icon size="18">mdi-delete</v-icon>
+                  </v-btn>
+                </div>
+              </div>
+              <div class="btn-row" style="margin-top: 10px; gap: 10px;">
+                <v-btn variant="outlined" size="small" class="text-none glass-btn" @click="addInstruction">
+                  <v-icon start size="16">mdi-plus</v-icon>
+                  新增指令
+                </v-btn>
+                <v-btn variant="text" size="small" class="text-none" style="color:rgba(255,255,255,0.5)" @click="restorePatientDefaults">
+                  恢复默认
+                </v-btn>
+              </div>
+            </div>
+
+            <div class="section-label" style="margin-top: 16px;">背景与缓慢变色</div>
+            <div class="theme-grid">
+              <div class="theme-row">
+                <div class="color-preview" :style="{ background: patientTheme.baseColor }"></div>
+                <v-text-field
+                  v-model="patientTheme.baseColor"
+                  label="背景色（Hex）"
+                  variant="outlined"
+                  density="compact"
+                  color="white"
+                  base-color="rgba(255,255,255,0.4)"
+                  hide-details
+                />
+              </div>
+              <v-switch
+                v-model="patientTheme.enableTransition"
+                label="启用缓慢变色"
+                hide-details
+                color="white"
+                density="compact"
+              />
+              <div v-if="patientTheme.enableTransition" class="theme-row">
+                <div class="color-preview" :style="{ background: patientTheme.transitionToColor || 'transparent' }"></div>
+                <v-text-field
+                  v-model="patientTheme.transitionToColor"
+                  label="目标色（Hex）"
+                  variant="outlined"
+                  density="compact"
+                  color="white"
+                  base-color="rgba(255,255,255,0.4)"
+                  hide-details
+                />
+              </div>
+              <v-text-field
+                v-if="patientTheme.enableTransition"
+                v-model.number="patientTheme.transitionDurationSec"
+                label="变色时长（秒）"
+                variant="outlined"
+                density="compact"
+                color="white"
+                base-color="rgba(255,255,255,0.4)"
+                type="number"
+                hide-details
+              />
+            </div>
+
+            <div class="btn-row" style="margin-top: 14px; justify-content: flex-end; gap: 10px;">
+              <v-btn variant="tonal" color="white" size="small" class="text-none" :loading="patientSaving" @click="savePatientSettings">
+                保存并同步
+              </v-btn>
+            </div>
+
+            <div v-if="patientSaveHint" class="hint-text" style="margin-top: 6px; text-align: right;">
+              {{ patientSaveHint }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 应用设置 -->
       <div class="glass-card mb-4">
         <div class="card-header">
@@ -253,9 +360,12 @@
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useAppStore } from '@/stores/app'
+import { patientApi } from '@/api/patient'
 import ShaderBackground from '@/components/ShaderBackground.vue'
 
 const authStore = useAuthStore()
+const appStore = useAppStore()
 
 const userForm = reactive({ username: '', email: '' })
 const loading = ref(false)
@@ -279,6 +389,121 @@ const showConfirmDialog = ref(false)
 const showTokenDialog = ref(false)
 const confirmMessage = ref('')
 const confirmedAction = ref(null)
+
+const DEFAULT_PATIENT_INSTRUCTIONS = [
+  '找到水杯',
+  '喝一口水',
+  '找到椅子',
+  '坐下来',
+  '听一首歌',
+  '休息',
+  '画一幅画',
+  '跳一跳'
+]
+
+const patientLoading = ref(false)
+const patientSaving = ref(false)
+const patientSaveHint = ref('')
+const patientInstructions = ref([...DEFAULT_PATIENT_INSTRUCTIONS])
+const patientTheme = reactive({
+  baseColor: '#0B1B3A',
+  enableTransition: false,
+  transitionToColor: '',
+  transitionDurationSec: 30
+})
+
+const normalizeHex = (v) => String(v || '').trim()
+
+const applyPatientSettingsPayload = (payload) => {
+  const list = Array.isArray(payload?.instructions) ? payload.instructions : []
+  patientInstructions.value = list.length
+    ? list.map((x) => String(x || '').trim()).filter(Boolean)
+    : [...DEFAULT_PATIENT_INSTRUCTIONS]
+
+  const theme = payload?.theme && typeof payload.theme === 'object' ? payload.theme : {}
+  patientTheme.baseColor = normalizeHex(theme.baseColor || '#0B1B3A')
+  patientTheme.enableTransition = Boolean(theme.enableTransition)
+  patientTheme.transitionToColor = normalizeHex(theme.transitionToColor || '')
+  patientTheme.transitionDurationSec = Number(theme.transitionDurationSec || 30)
+}
+
+const loadPatientSettings = async () => {
+  if (!authStore.isAuthenticated) return
+  patientLoading.value = true
+  patientSaveHint.value = ''
+  try {
+    const res = await patientApi.getSettings()
+    applyPatientSettingsPayload(res.data)
+  } catch (e) {
+    console.error('加载用户端设置失败:', e)
+    patientSaveHint.value = '加载失败（请确认已登录且后端可用）'
+    patientInstructions.value = [...DEFAULT_PATIENT_INSTRUCTIONS]
+  } finally {
+    patientLoading.value = false
+  }
+}
+
+const addInstruction = () => {
+  patientInstructions.value = [...patientInstructions.value, '']
+}
+
+const removeInstruction = (idx) => {
+  const next = [...patientInstructions.value]
+  next.splice(idx, 1)
+  patientInstructions.value = next.length ? next : [...DEFAULT_PATIENT_INSTRUCTIONS]
+}
+
+const moveInstruction = (from, to) => {
+  const next = [...patientInstructions.value]
+  if (from < 0 || from >= next.length) return
+  if (to < 0 || to >= next.length) return
+  const [item] = next.splice(from, 1)
+  next.splice(to, 0, item)
+  patientInstructions.value = next
+}
+
+const restorePatientDefaults = () => {
+  patientInstructions.value = [...DEFAULT_PATIENT_INSTRUCTIONS]
+  patientTheme.baseColor = '#0B1B3A'
+  patientTheme.enableTransition = false
+  patientTheme.transitionToColor = ''
+  patientTheme.transitionDurationSec = 30
+  patientSaveHint.value = '已恢复默认（别忘了保存同步）'
+}
+
+const savePatientSettings = async () => {
+  if (!authStore.isAuthenticated) {
+    patientSaveHint.value = '未登录，无法同步'
+    return
+  }
+
+  patientSaving.value = true
+  patientSaveHint.value = ''
+  try {
+    const instructions = (patientInstructions.value || [])
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+
+    const payload = {
+      instructions,
+      theme: {
+        baseColor: normalizeHex(patientTheme.baseColor || '#0B1B3A'),
+        enableTransition: Boolean(patientTheme.enableTransition),
+        transitionToColor: patientTheme.enableTransition ? normalizeHex(patientTheme.transitionToColor) || null : null,
+        transitionDurationSec: Number(patientTheme.transitionDurationSec || 30)
+      }
+    }
+
+    const res = await patientApi.updateSettings(payload)
+    applyPatientSettingsPayload(res.data)
+    patientSaveHint.value = '已同步到用户端'
+  } catch (e) {
+    console.error('保存用户端设置失败:', e)
+    patientSaveHint.value = '保存失败（请检查网络/后端）'
+  } finally {
+    patientSaving.value = false
+  }
+}
 
 const isFormChanged = computed(() => {
   if (!authStore.user) return false
@@ -376,6 +601,7 @@ const executeConfirmedAction = () => {
 onMounted(() => {
   resetForm()
   loadAppSettings()
+  if (appStore.isGuardian) loadPatientSettings()
 })
 </script>
 
@@ -509,6 +735,42 @@ onMounted(() => {
   background: rgba(30,30,40,0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+}
+.instruction-list {
+  display: grid;
+  gap: 10px;
+}
+.instruction-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+}
+.instruction-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+}
+.instruction-actions :deep(.v-btn) {
+  color: rgba(255,255,255,0.65) !important;
+}
+.theme-grid {
+  display: grid;
+  gap: 10px;
+}
+.theme-row {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.color-preview {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
 }
 .token-row {
   display: flex;

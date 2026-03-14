@@ -8,12 +8,12 @@
         <v-btn icon variant="text" size="small" @click="$router.back()" class="back-btn">
           <v-icon>mdi-arrow-left</v-icon>
         </v-btn>
-        <h1 class="social-title">星际连线</h1>
-        <p class="social-subtitle">发现与你相似的星球伙伴</p>
+        <h1 class="social-title">{{ pageTitle }}</h1>
+        <p v-if="!isPatientMode" class="social-subtitle">发现与你相似的星球伙伴</p>
       </div>
 
       <!-- Tabs -->
-      <div class="social-tabs">
+      <div v-if="!isPatientMode" class="social-tabs">
         <v-btn-toggle v-model="activeTab" mandatory density="compact" variant="outlined" color="white">
           <v-btn value="resonance" size="small" class="text-none">连线匹配</v-btn>
           <v-btn value="bottle" size="small" class="text-none">漂流瓶</v-btn>
@@ -21,7 +21,7 @@
       </div>
 
       <!-- Resonance Tab -->
-      <div v-if="activeTab === 'resonance'">
+      <div v-if="!isPatientMode && activeTab === 'resonance'">
         <div v-if="similarLoading" class="loading-state">
           <v-progress-circular indeterminate color="white" size="28" />
           <span class="ml-3">正在寻找共振…</span>
@@ -239,6 +239,7 @@ import axios from 'axios'
 import ShaderBackground from '@/components/ShaderBackground.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useShowcaseStore } from '@/stores/showcase'
+import { useAppStore } from '@/stores/app'
 
 const router = useRouter()
 const route = useRoute()
@@ -249,6 +250,9 @@ const authHeaders = () => ({ 'X-Auth-Token': getToken() })
 const authStore = useAuthStore()
 const showcaseStore = useShowcaseStore()
 const isShowcaseActive = computed(() => showcaseStore.active)
+const appStore = useAppStore()
+const isPatientMode = computed(() => appStore.isPatient)
+const pageTitle = computed(() => (isPatientMode.value ? '拾一封信' : '星际连线'))
 
 const activeTab = ref('resonance')
 const similarLoading = ref(false)
@@ -329,6 +333,10 @@ function personaLabelColor(personaType) {
 }
 
 function applyTabFromQuery() {
+  if (isPatientMode.value) {
+    activeTab.value = 'bottle'
+    return
+  }
   const raw = route.query?.tab
   const tab = raw === 'bottle' ? 'bottle' : raw === 'resonance' ? 'resonance' : ''
   if (tab) activeTab.value = tab
@@ -365,7 +373,9 @@ onMounted(async () => {
     await consumeRouteAction()
     return
   }
-  await loadSimilarUsers()
+  if (!isPatientMode.value) {
+    await loadSimilarUsers()
+  }
   await loadMyBottles()
   await consumeRouteAction()
 })
@@ -394,7 +404,11 @@ watch(isShowcaseActive, async (active) => {
   }
 
   pickedBottle.value = null
-  await loadSimilarUsers()
+  if (!isPatientMode.value) {
+    await loadSimilarUsers()
+  } else {
+    similarUsers.value = []
+  }
   await loadMyBottles()
   applyTabFromQuery()
   await consumeRouteAction()
