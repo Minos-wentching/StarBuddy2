@@ -1,166 +1,85 @@
----
-domain:
-tags:
-  - 孤独症
-  - 多智能体
-  - 心理辅助
-datasets:
-  evaluation:
-  test:
-  train:
-models:
-license: Apache License 2.0
----
+# StarBuddy2（星伴）
 
-# 星伴 StarBuddy
+一个面向**孤独症谱系用户**的情绪释放与沟通辅助平台，同时为**监护人**提供观察、整理与理解的能力。当前版本在同一套前端里支持两种“端角色”：**用户端（孤独症患者端）**与**监护人端**。
 
-面向孤独症谱系人群的多智能体辅助对话系统。通过模拟内心不同"伙伴"之间的协作与对话，帮助用户理解自身的感知方式、情绪模式和行为习惯，在安全、可预测的环境中建立自我认知。
+## 两端入口（重要）
 
-## 核心理念
+- 打开前端地址后会先进入 `/entry`：选择 **监护人端 / 用户端**。
+- 监护人端：继续使用原来的 `/login` 登录界面（UI 不变）。
+- 用户端：进入全屏深蓝引导 UI（无需登录也可使用本地模式；登录后可同步到账号）。
 
-每个人的内心都有不同的声音。星伴将这些声音具象化为四个伙伴：
+> 注意：这是“两个端（角色）”，不是两个前端端口；默认仍是一个前端端口（5173）。
 
-| 伙伴 | 角色 | 说明 |
-|------|------|------|
-| 安全岛 (Safe Island) | 主对话伙伴 | 稳定、可预测的交流基地，提供安全感 |
-| 感知精灵 (Sensory Sprite) | 感官敏感的自我 | 感官过载、情绪波动时激活 |
-| 规则守卫 (Rule Guardian) | 秩序的守护者 | 面对变化和不确定性时激活 |
-| 星星向导 (Star Guide) | 后台分析师 | 分析行为模式，帮助建立自我认知 |
+## 功能概览
 
-系统根据对话中的情绪强度自动切换伙伴，当感知精灵与规则守卫产生冲突时，会触发「星球会议」进行多轮协商，最终由星星向导总结行为模式，生成「内心星图」。
+### 用户端（孤独症患者端）
+- 新的全屏引导流程：**你叫什么名字 → 深呼吸 → 指令循环**（固定底部两按钮：灰=深呼吸，黑=继续）。
+- 保留并可从菜单进入：**安全岛**（`/immersive`）、**拾一封信**（漂流瓶页：`/social?tab=bottle&action=pick`）。
 
-## 功能模块
+### 监护人端
+- 保留原有功能入口：感知画册、会议记录、更多选项、成长报告、看我的星图、记忆中枢等。
+- 在“设置”页新增：**用户端设置**（可编辑用户端指令列表、背景色与缓慢变色，并同步到后端）。
 
-- 多伙伴实时对话 — SSE 流式响应，伙伴根据情绪状态自动切换
-- 星球会议 — 感知精灵与规则守卫的多轮对话协商
-- 内心星图 — 核心行为模式的识别与追踪
-- 感知画册 — AI 生成的意象图片日记
-- 星际连线 — 漂流瓶社交，与相似用户建立连接
-- 成长报告 — 可视化的情绪轨迹与成长分析
-- 会话快照 — 状态版本管理与回溯
-
-## 技术架构
-
-```
-┌─────────────────────────────────────────────┐
-│                   Nginx :7860                │
-│         静态资源 + /api 反向代理              │
-├──────────────────┬──────────────────────────┤
-│   Vue 3 前端      │     FastAPI 后端 :8000    │
-│                  │                          │
-│  Vuetify 3       │  多 Agent 调度            │
-│  Pinia 状态管理   │  Persona 状态机           │
-│  Three.js 背景   │  情绪分析引擎             │
-│  SSE 实时通信     │  ChromaDB 向量记忆        │
-│                  │  SQLite 持久化            │
-│                  │  DashScope LLM           │
-└──────────────────┴──────────────────────────┘
-```
-
-### 后端
-
-- Python 3.11 / FastAPI / Uvicorn
-- SQLAlchemy 2.0 (async) + aiosqlite
-- ChromaDB + sentence-transformers — RAG 记忆检索
-- DashScope API — qwen-max (对话) / qwen-plus (情绪分析) / z-image-turbo (图片生成)
-- SSE 实时事件推送（伙伴切换、会议进度、日记生成）
-- JWT 认证
-
-### 前端
-
-- Vue 3.4 / Vite 5
-- Vuetify 3 + Tailwind CSS 4
-- Pinia 状态管理
-- Three.js WebGL 动态背景
-- Axios + SSE 客户端
-
-## 快速开始
+## 开发运行（PowerShell）
 
 ### 环境要求
-
+- Windows + PowerShell
 - Python 3.11+
-- Node.js 18+
-- DashScope API Key（[申请地址](https://dashscope.console.aliyun.com/)）
+- Node.js 18+（含 npm）
 
-### 方式一：Docker Compose（推荐）
+### 1）启动后端（FastAPI）
+在仓库根目录打开 PowerShell：
 
-```bash
-# 1. 克隆项目
-git clone https://www.modelscope.cn/studios/zhupeiling/MultiMe_IFS.git
-cd MultiMe_IFS
+```powershell
+cd D:\StarBuddy2\StarBuddy
 
-# 2. 配置环境变量
-cp .env.example .env
-# 编辑 .env，填入 DASHSCOPE_API_KEY
+# (可选) 建议使用虚拟环境
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
-# 3. 启动
-docker compose up
-```
-
-访问 http://localhost:5173（前端）/ http://localhost:8000（API）
-
-### 方式二：本地开发
-
-```bash
-# 后端
 pip install -r requirements.txt
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
-# 前端（另一个终端）
-cd frontend
+# 允许前端跨域（开发时建议设置）
+$env:ENVIRONMENT="development"
+$env:ALLOWED_ORIGINS="http://127.0.0.1:5173,http://localhost:5173"
+
+uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+后端文档：`http://127.0.0.1:8000/docs`
+
+> 首次启动可能会下载/初始化 embedding 模型与向量存储，耗时较长属正常现象。
+
+### 2）启动前端（Vite）
+另开一个 PowerShell：
+
+```powershell
+cd D:\StarBuddy2\StarBuddy\frontend
 npm install
-npm run dev
+
+# 让 Vite 代理把 /api 转发到后端
+$env:VITE_PROXY_TARGET="http://127.0.0.1:8000"
+
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-### 环境变量
+打开：`http://127.0.0.1:5173/` → 自动进入 `/entry` 选择端角色。
 
-| 变量 | 说明 | 必填 |
-|------|------|------|
-| `DASHSCOPE_API_KEY` | 阿里云 DashScope API 密钥 | 是 |
-| `JWT_SECRET_KEY` | JWT 签名密钥（不设则自动生成） | 否 |
-| `DATABASE_URL` | 数据库连接串，默认 SQLite | 否 |
-| `ENVIRONMENT` | `development` / `production` | 否 |
-| `ALLOWED_ORIGINS` | CORS 允许的源，逗号分隔 | 否 |
+### 常见问题
+- **8000 端口被占用**：把后端改成 8001，并同步改前端代理：
+  - 后端：`--port 8001`
+  - 前端：`$env:VITE_PROXY_TARGET="http://127.0.0.1:8001"`
+- **想重新选择端角色**：清空浏览器 localStorage 的 `app_role`（或换无痕窗口）。
 
-## 项目结构
+## Docker Compose（可选）
+在仓库根目录：
 
-```
-├── backend/
-│   ├── main.py                 # FastAPI 入口
-│   ├── api_config.py           # 集中配置
-│   ├── api/                    # API 端点 (auth/dialogue/council/sse/social/images/version)
-│   ├── core/                   # 状态机 + 情绪分析
-│   ├── services/               # 业务逻辑 + LLM Prompt
-│   ├── database/               # ORM 模型
-│   └── auth/                   # JWT 认证
-├── frontend/
-│   ├── src/
-│   │   ├── views/              # 页面 (Home/Council/Report/Social/...)
-│   │   ├── components/         # 组件 (CouncilDebateLog/ShaderBackground/...)
-│   │   ├── stores/             # Pinia 状态
-│   │   ├── composables/        # SSE/Persona 组合式函数
-│   │   └── design-system/      # 设计令牌
-│   └── index.html
-├── docker-compose.yml          # 本地开发
-├── Dockerfile                  # 生产构建
-├── nginx.conf                  # 生产反向代理
-└── start.sh                    # 生产启动脚本
+```powershell
+cd D:\StarBuddy2\StarBuddy
+docker compose up --build
 ```
 
-## 部署
-
-项目支持部署到 [ModelScope 创空间](https://modelscope.cn/studios)，使用多阶段 Docker 构建：
-
-```bash
-# 构建生产镜像
-docker build -t starbuddy .
-
-# 运行（端口 7860）
-docker run -p 7860:7860 --env-file .env starbuddy
-```
-
-生产环境通过 Nginx 统一暴露 7860 端口，静态资源直接服务，API 请求代理到后端 8000 端口。
+前端：`http://127.0.0.1:5173/`
 
 ## 许可证
-
 [Apache License 2.0](LICENSE)
