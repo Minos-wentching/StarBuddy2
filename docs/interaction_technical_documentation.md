@@ -1,6 +1,16 @@
 # 交互性技术文档（StarBuddy2：监护人端 / 用户端）
 
-更新时间：2026-03-14
+更新时间：2026-03-15
+
+<details>
+<summary><strong>2026-03-15 交互变更摘要（点击展开）</strong></summary>
+
+- 用户端小狗“从左到右循环奔跑”耗时调整为 **15 秒**。
+- 进入“深呼吸”界面时：小狗回到初始位置/大小，并**清空黑色按钮计数**（从头开始）。
+- 用户端提示词为“听一首歌”时：若监护端已上传音频（`musicUploadUrl` 存在），自动播放 **30 秒**，音量为 **10%**。
+- 监护端对话接口等待时间上调（前端请求超时从 30s → 120s）；后端对话模型新增 **DeepSeek（OpenAI 兼容）**配置项。
+
+</details>
 
 本文档聚焦“交互怎么发生”：**页面如何切换、按钮/计时器如何驱动状态变化、前后端如何读写数据、端角色如何限制功能**。适合用于：
 - 产品/设计/研发对齐交互细节
@@ -75,6 +85,26 @@
 - 灰色按钮：进入/重启“深呼吸”
 - 黑色按钮：继续（推进到下一步/下一条）
 
+<details>
+<summary><strong>状态机图（Mermaid，点击展开）</strong></summary>
+
+```mermaid
+stateDiagram-v2
+  [*] --> name
+
+  name --> name: 黑按钮(空名字)
+  name --> instructions: 黑按钮(名字OK)
+
+  instructions --> encourage: 黑按钮(推进下一条)
+  encourage --> instructions: 10s 自动回到指令
+
+  instructions --> breathing: 灰按钮(随时进入)
+  breathing --> instructions: 黑按钮(继续)
+  breathing --> name: 黑按钮(未填写名字)
+```
+
+</details>
+
 ### 3.1 进入用户端后的流程
 1) 用户从 `/entry` 选择“用户端” → 跳转 `/patient`
 2) `/patient` `onMounted()`：
@@ -98,6 +128,12 @@ UI 规则：
 ### 3.3 深呼吸页（mode = breathing）
 进入方式：
 - 灰色按钮随时进入深呼吸页（不依赖当前状态）
+
+进入时的“重置”行为：
+- **清空黑色按钮计数**（用于小狗成长/动画）：
+  - 有 token：调用 `POST /api/me/patient-metrics/black-click/reset`
+  - 无 token：写入 `localStorage.patient_black_click_count_local=0`
+- 因为计数清零，小狗会回到初始位置与大小（见 3.6）。
 
 动画与计时：
 - 标题：白色 `48px`，“深呼吸”
@@ -125,12 +161,36 @@ UI 规则：
 - 黑色按钮随时可点：立即推进下一条，并重置 20 秒计时
 - 末尾后回到第一条（循环）
 
+音乐提示词（听一首歌）：
+- 当提示词为 **“听一首歌”** 且检测到 `musicUploadUrl`（监护端已上传音频）时：
+  - 自动播放 **30 秒**
+  - 音量固定为 **10%**（浏览器/系统音量的相对比例）
+- 说明：浏览器的自动播放策略可能会限制“非用户手势触发”的播放；若遇到 `NotAllowedError`，需在同站点有过交互后才更稳定。
+
 ### 3.5 用户端菜单（安全岛 / 拾一封信）
 用户端右上角有“菜单”按钮，打开后可进入：
 - **安全岛**：跳转 `/immersive`
 - **拾一封信**：跳转 `/social?tab=bottle&action=pick`
 
 > `Social.vue` 在用户端模式下会强制展示漂流瓶（bottle）并隐藏 “连线匹配” 标签。
+
+---
+
+### 3.6 小狗伙伴（黑色按钮计数 → 形态/奔跑）
+用户端页面右下角/底部附近常驻一只 SVG 小狗（不阻挡交互）。
+
+计数来源：
+- **仅在 `instructions` 状态**，按一次黑色按钮会计数 +1（用于“成长/动画”）。
+- 计数读取顺序：有 token → `GET /api/me/patient-metrics`；无 token → `localStorage.patient_black_click_count_local`。
+
+形态阶段（阈值）：
+- `blackClickCount <= 2`：`small`
+- `2 < blackClickCount <= 4`：`big`
+- `4 < blackClickCount <= 8`：`walk big`（原地抖动）
+- `blackClickCount > 8`：`run big`（从左到右循环奔跑）
+
+奔跑速度：
+- `run big` 的横向穿越时间为 **15 秒**（从屏幕左侧外 → 右侧外，循环）。
 
 ---
 
@@ -200,7 +260,8 @@ Base：`/api/me`
         "enableTransition": false,
         "transitionToColor": null,
         "transitionDurationSec": 30
-      }
+      },
+      "musicUploadUrl": "/uploads/music/<user_id>/<file>"
     }
     ```
 
@@ -225,6 +286,7 @@ Base：`/api/me`
 用户端离线（无 token）场景：
 - `patient_profile_local`：名字
 - `patient_settings_local`：指令与主题（当前仅预留读取；写入主要由监护人端同步，后续可扩展为用户端离线修改）
+- `patient_black_click_count_local`：黑色按钮计数（小狗成长/奔跑）
 
 > 只要你清空 `app_role`，刷新后就会回到 `/entry` 重新选择端角色。
 
@@ -266,3 +328,62 @@ npm run dev -- --host 127.0.0.1 --port 5173
 - 如果端口被占用：把后端改到 8001，同时把 `VITE_PROXY_TARGET` 改到 8001
 - 用户端看不到设置变化：确认监护人端已点击“保存并同步”，且用户端重新进入 `/patient` 会重新拉取
 
+---
+
+## 8. 对话模型接入（DeepSeek / DashScope）
+后端对话生成走 OpenAI 兼容协议客户端，支持多提供方：`dashscope` / `deepseek`。
+
+<details>
+<summary><strong>DeepSeek（推荐）环境变量（点击展开）</strong></summary>
+
+```powershell
+# 后端环境变量（启动 uvicorn 前设置）
+$env:DIALOGUE_PROVIDER="deepseek"
+$env:DEEPSEEK_API_KEY="你的DeepSeek_API_KEY"
+$env:DEEPSEEK_BASE_URL="https://api.deepseek.com/v1"    # 可选
+$env:DEEPSEEK_MODEL="deepseek-chat"                    # 可选
+
+# 超时/重试（可选，用于避免前端等待超时）
+$env:DIALOGUE_API_TIMEOUT_SECONDS="45"
+$env:DIALOGUE_API_MAX_RETRIES="1"
+```
+
+</details>
+
+<details>
+<summary><strong>DashScope 环境变量（点击展开）</strong></summary>
+
+```powershell
+$env:DIALOGUE_PROVIDER="dashscope"        # 可选；留空也会自动选择
+$env:DASHSCOPE_API_KEY="你的DashScope_API_KEY"
+$env:DASHSCOPE_DIALOGUE_MODEL="qwen-max"  # 可选
+```
+
+</details>
+
+前端监护端对话请求超时：
+- `frontend/src/api/dialogue.js` 的 axios timeout 为 **120s**（避免 30s 过短导致“总是超时”）。
+
+---
+
+## 9. 通过二维码体验（可行性与操作）
+目标：手机/平板扫码后直接进入体验入口（一般是 `/entry`）。
+
+可行性：可行，前提是“前端可被手机访问到”。常见做法有三种：
+
+1) **同一局域网（最快，适合现场演示）**
+- 电脑启动后端：`uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload`
+- 电脑启动前端：`npm run dev -- --host 0.0.0.0 --port 5173`
+- 在手机上访问：`http://<电脑局域网IP>:5173/`
+- 用任意二维码工具生成该 URL 的二维码即可
+- 注意：需要放行系统防火墙端口（Windows 入站规则 5173/8000）
+
+2) **公网部署（最稳定，适合长期体验）**
+- 购买/准备一台云服务器（或可用的容器平台），部署 `backend + frontend + nginx`（仓库已有 `docker-compose.yml` / `Dockerfile` 可作为起点）
+- 配置域名与 HTTPS（建议，否则移动端部分能力/浏览器策略可能受限）
+- 二维码指向你的公网域名，例如：`https://your-domain.com/entry`
+
+3) **临时隧道（适合远程分享，依赖第三方）**
+- 使用 `cloudflared` / `ngrok` 等把本地 `5173` 暴露成公网 URL
+- 二维码指向该临时 URL
+- 注意：临时域名可能变化，且需要额外的安全评估

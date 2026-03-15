@@ -118,6 +118,7 @@ class PatientSettings(BaseModel):
     instructions: List[str] = Field(default_factory=list)
     theme: PatientTheme = Field(default_factory=PatientTheme)
     encouragementText: str = Field("你真棒", min_length=1, max_length=20)
+    musicUploadUrl: Optional[str] = Field(default=None, max_length=500)
 
     model_config = ConfigDict(extra="forbid")
 

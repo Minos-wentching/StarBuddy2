@@ -22,5 +22,6 @@ export const patientApi = {
   getSettings: () => apiClient.get('/api/me/patient-settings'),
   updateSettings: (payload) => apiClient.put('/api/me/patient-settings', payload),
   getMetrics: () => apiClient.get('/api/me/patient-metrics'),
-  incrementBlackClick: () => apiClient.post('/api/me/patient-metrics/black-click')
+  incrementBlackClick: () => apiClient.post('/api/me/patient-metrics/black-click'),
+  resetBlackClick: () => apiClient.post('/api/me/patient-metrics/black-click/reset')
 }

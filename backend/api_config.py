@@ -86,6 +86,32 @@ class APIConfig(BaseSettings):
         env="DASHSCOPE_DIALOGUE_MODEL"
     )
 
+    # ==================== 对话模型（OpenAI 兼容）多提供方配置 ====================
+    DIALOGUE_PROVIDER: str = Field(
+        default="",
+        env="DIALOGUE_PROVIDER",
+        description="对话模型提供方：deepseek|dashscope。留空自动选择（优先 deepseek，其次 dashscope）。"
+    )
+    DIALOGUE_API_TIMEOUT_SECONDS: int = Field(
+        default=45,
+        ge=5,
+        le=300,
+        env="DIALOGUE_API_TIMEOUT_SECONDS",
+        description="对话 API 超时时间（秒）。"
+    )
+    DIALOGUE_API_MAX_RETRIES: int = Field(
+        default=1,
+        ge=0,
+        le=5,
+        env="DIALOGUE_API_MAX_RETRIES",
+        description="对话 API 最大重试次数（OpenAI SDK 的 max_retries）。"
+    )
+
+    # DeepSeek（OpenAI 兼容）
+    DEEPSEEK_API_KEY: str = Field(default="", env="DEEPSEEK_API_KEY")
+    DEEPSEEK_BASE_URL: str = Field(default="https://api.deepseek.com/v1", env="DEEPSEEK_BASE_URL")
+    DEEPSEEK_MODEL: str = Field(default="deepseek-chat", env="DEEPSEEK_MODEL")
+
     # 意象绘图/图像生成API配置
     # 使用统一的DASHSCOPE_API_KEY
     DASHSCOPE_VIDEO_URL: str = Field(

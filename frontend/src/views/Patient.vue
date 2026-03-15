@@ -128,6 +128,7 @@ let instructionTimer = null
 let encourageTimer = null
 const pendingInstructionIndex = ref(0)
 const blackClickCount = ref(0)
+const musicUploadUrl = ref('')
 
 // Breathing
 const breathingWord = ref('吸气')
@@ -174,6 +175,7 @@ async function loadProfileAndSettings() {
       instructions.value = list.length ? list.map((x) => String(x || '').trim()).filter(Boolean) : [...DEFAULT_INSTRUCTIONS]
       applyTheme(res.data?.theme)
       encouragementText.value = String(res.data?.encouragementText || '你真棒').trim() || '你真棒'
+      musicUploadUrl.value = String(res.data?.musicUploadUrl || '').trim()
     } else {
       const raw = localStorage.getItem('patient_settings_local')
       if (raw) {
@@ -182,10 +184,12 @@ async function loadProfileAndSettings() {
         instructions.value = list.length ? list.map((x) => String(x || '').trim()).filter(Boolean) : [...DEFAULT_INSTRUCTIONS]
         applyTheme(parsed?.theme)
         encouragementText.value = String(parsed?.encouragementText || '你真棒').trim() || '你真棒'
+        musicUploadUrl.value = ''
       } else {
         instructions.value = [...DEFAULT_INSTRUCTIONS]
         applyTheme(defaultTheme())
         encouragementText.value = '你真棒'
+        musicUploadUrl.value = ''
       }
     }
   } catch (e) {
@@ -193,6 +197,7 @@ async function loadProfileAndSettings() {
     instructions.value = [...DEFAULT_INSTRUCTIONS]
     applyTheme(defaultTheme())
     encouragementText.value = '你真棒'
+    musicUploadUrl.value = ''
   }
 }
 
@@ -238,6 +243,47 @@ function startInstructionTimer() {
   }, 20000)
 }
 
+let musicAudio = null
+let musicStopTimer = null
+
+function stopMusicPreview() {
+  if (musicStopTimer) {
+    clearTimeout(musicStopTimer)
+    musicStopTimer = null
+  }
+  if (musicAudio) {
+    try {
+      musicAudio.pause()
+      musicAudio.currentTime = 0
+    } catch {
+      // ignore
+    }
+  }
+}
+
+async function maybeAutoPlayMusic() {
+  if (promptText.value !== '听一首歌') return
+  const raw = String(musicUploadUrl.value || '').trim()
+  if (!raw) return
+
+  const baseURL = String(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+  const url = /^https?:\/\//i.test(raw)
+    ? raw
+    : baseURL
+      ? (raw.startsWith('/') ? `${baseURL}${raw}` : `${baseURL}/${raw}`)
+      : raw
+
+  stopMusicPreview()
+  try {
+    musicAudio = new Audio(url)
+    musicAudio.volume = 0.1
+    await musicAudio.play()
+    musicStopTimer = setTimeout(() => stopMusicPreview(), 30000)
+  } catch (e) {
+    console.warn('Failed to auto-play music:', e)
+  }
+}
+
 function stopBreathingTimers() {
   if (breathingTick) clearInterval(breathingTick)
   if (breathingPhaseTick) clearInterval(breathingPhaseTick)
@@ -268,7 +314,22 @@ function startBreathing() {
   }, BREATH_PHASE_MS * 2)
 }
 
-function handleGray() {
+async function resetBlackClickCount() {
+  blackClickCount.value = 0
+  localStorage.setItem('patient_black_click_count_local', '0')
+  try {
+    if (hasToken()) {
+      const res = await patientApi.resetBlackClick()
+      blackClickCount.value = Number(res.data?.blackClickCount || 0)
+    }
+  } catch (e) {
+    console.warn('Failed to reset black click:', e)
+  }
+}
+
+async function handleGray() {
+  await resetBlackClickCount()
+  stopMusicPreview()
   mode.value = 'breathing'
   startBreathing()
 }
@@ -387,22 +448,37 @@ watch(
       startInstructionTimer()
       stopBreathingTimers()
       clearEncourageTimer()
+      maybeAutoPlayMusic()
       return
     }
     if (m === 'breathing') {
       clearInstructionTimer()
       clearEncourageTimer()
+      stopMusicPreview()
       return
     }
     if (m === 'encourage') {
       clearInstructionTimer()
       stopBreathingTimers()
+      stopMusicPreview()
       return
     }
     // name
     clearInstructionTimer()
     stopBreathingTimers()
     clearEncourageTimer()
+    stopMusicPreview()
+  }
+)
+
+watch(
+  () => promptText.value,
+  (text) => {
+    if (text === '听一首歌') {
+      maybeAutoPlayMusic()
+    } else {
+      stopMusicPreview()
+    }
   }
 )
 
@@ -425,6 +501,7 @@ onBeforeUnmount(() => {
   clearInstructionTimer()
   clearEncourageTimer()
   stopBreathingTimers()
+  stopMusicPreview()
 })
 </script>
 
@@ -592,7 +669,7 @@ onBeforeUnmount(() => {
 }
 .dog-wrap.run {
   left: -90px;
-  animation: dog-run 2.8s linear infinite;
+  animation: dog-run 15s linear infinite;
 }
 @keyframes dog-run {
   0% { transform: translateX(0); }

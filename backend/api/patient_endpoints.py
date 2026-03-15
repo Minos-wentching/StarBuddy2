@@ -74,7 +74,16 @@ def _merge_patient_settings(settings: dict) -> PatientSettings:
 
     encouragement = str(raw_settings.get("encouragementText") or "你真棒").strip() or "你真棒"
 
-    return PatientSettings(instructions=instructions, theme=theme, encouragementText=encouragement)
+    intake = settings.get("guardian_intake", {})
+    intake = intake if isinstance(intake, dict) else {}
+    music_upload_url = str(intake.get("music_upload_url") or "").strip() or None
+
+    return PatientSettings(
+        instructions=instructions,
+        theme=theme,
+        encouragementText=encouragement,
+        musicUploadUrl=music_upload_url,
+    )
 
 
 def _read_patient_metrics(settings: dict) -> PatientMetrics:
@@ -230,3 +239,29 @@ async def increment_black_click(
     )
 
     return PatientMetrics(blackClickCount=next_count)
+
+
+@router.post("/patient-metrics/black-click/reset", response_model=PatientMetrics)
+async def reset_black_click(
+    user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """清空黑色按钮点击计数（用于小狗成长/动画等）"""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    next_settings = dict(user.settings or {})
+    next_settings["patient_metrics"] = {
+        "blackClickCount": 0,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    await db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(settings=next_settings, updated_at=datetime.utcnow())
+    )
+
+    return PatientMetrics(blackClickCount=0)

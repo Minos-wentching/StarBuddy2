@@ -13,8 +13,8 @@ from openai import AsyncOpenAI
 from ..api_config import config
 
 # 外部 API 调用配置
-API_TIMEOUT_SECONDS = 30
-API_MAX_RETRIES = 3
+API_TIMEOUT_SECONDS = int(getattr(config, "DIALOGUE_API_TIMEOUT_SECONDS", 45) or 45)
+API_MAX_RETRIES = int(getattr(config, "DIALOGUE_API_MAX_RETRIES", 1) or 1)
 API_RETRY_BACKOFF_BASE = 1.0  # 指数退避基础秒数
 from .prompts import (
     MANAGER_CHAT_PROMPT, EXILES_SYSTEM_PROMPT, FIREFIGHTERS_SYSTEM_PROMPT,
@@ -29,21 +29,46 @@ class ExternalAPIService:
     """外部API服务，基于 OpenAI 兼容协议调用 DashScope"""
 
     def __init__(self):
-        # 初始化 OpenAI 异步客户端
-        api_key = config.DASHSCOPE_DIALOGUE_API_KEY or config.DASHSCOPE_API_KEY
-        base_url = getattr(config, "DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+        # 初始化 OpenAI 异步客户端（OpenAI 兼容协议）
+        provider = (getattr(config, "DIALOGUE_PROVIDER", "") or "").strip().lower()
+        deepseek_key = str(getattr(config, "DEEPSEEK_API_KEY", "") or "").strip()
+        dashscope_key = str(config.DASHSCOPE_DIALOGUE_API_KEY or config.DASHSCOPE_API_KEY or "").strip()
 
-        if api_key:
+        selected = provider
+        if not selected:
+            selected = "deepseek" if deepseek_key else ("dashscope" if dashscope_key else "")
+
+        api_key = ""
+        base_url = ""
+        model = ""
+
+        if selected == "deepseek":
+            api_key = deepseek_key
+            base_url = str(getattr(config, "DEEPSEEK_BASE_URL", "") or "https://api.deepseek.com/v1").strip()
+            model = str(getattr(config, "DEEPSEEK_MODEL", "") or "deepseek-chat").strip()
+        elif selected == "dashscope":
+            api_key = dashscope_key
+            base_url = str(getattr(config, "DASHSCOPE_BASE_URL", "") or "https://dashscope.aliyuncs.com/compatible-mode/v1").strip()
+            model = str(getattr(config, "DASHSCOPE_DIALOGUE_MODEL", "") or "qwen-max").strip()
+        else:
+            api_key = ""
+            base_url = ""
+            model = ""
+
+        self.dialogue_provider = selected or "none"
+        self.dialogue_model = model
+
+        if api_key and base_url:
             self.client = AsyncOpenAI(
                 api_key=api_key,
                 base_url=base_url,
                 timeout=API_TIMEOUT_SECONDS,
                 max_retries=API_MAX_RETRIES,
             )
-            logger.info(f"ExternalAPIService initialized with base_url: {base_url}")
+            logger.info("ExternalAPIService initialized: provider=%s base_url=%s timeout=%ss retries=%s", self.dialogue_provider, base_url, API_TIMEOUT_SECONDS, API_MAX_RETRIES)
         else:
             self.client = None
-            logger.warning("DASHSCOPE_API_KEY not set, ExternalAPIService will try local LLM (if configured) or use mock responses")
+            logger.warning("No external dialogue API key configured; will try local LLM (if configured) or use mock responses")
 
         provider = (getattr(config, "LOCAL_LLM_PROVIDER", "") or "").strip().lower()
         self.local_provider = provider or ("ollama" if not api_key else "none")
@@ -78,7 +103,7 @@ class ExternalAPIService:
             return await self._generate_mock_response(persona, message)
 
         try:
-            model = config.DASHSCOPE_DIALOGUE_MODEL or "qwen-max"
+            model = self.dialogue_model or "qwen-max"
             
             # 构建消息列表
             messages = []
